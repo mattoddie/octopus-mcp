@@ -1,0 +1,23 @@
+name: ✨ Feature request
+description: Suggest a new tool or improvement.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: Describe what you'd like to ask your assistant to do, or what's missing today.
+      placeholder: e.g. "I'd like to know how much my heat pump used last month compared with the same month last year."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: New tool(s), arguments or behaviour. If it maps to a REST endpoint in [Octopus's API documentation](https://docs.octopus.energy/rest/guides/endpoints) or a field in the [Kraken GraphQL schema](https://api.octopus.energy/v1/graphql/), include it.
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contributing
+      options:
+        - label: I'd be willing to open a pull request for this

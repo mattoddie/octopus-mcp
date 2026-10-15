@@ -1,0 +1,60 @@
+name: 🐛 Bug report
+description: Something doesn't work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please check [Troubleshooting](https://octopus-mcp.mattoddie.dev/docs/troubleshooting/) first.
+        **Remove your API key, account number, MPAN/MPRN, meter serial numbers, device IDs and address** from anything you paste.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: tool
+    attributes:
+      label: Tool(s) involved
+      placeholder: e.g. octopus_get_consumption
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Error output
+      description: The tool error text and/or `docker compose logs octopus-mcp` output, with private details removed.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: octopus-mcp version
+      description: From `octopus-mcp version`, or the image tag you run.
+      placeholder: e.g. 1.0.0
+    validations:
+      required: true
+  - type: input
+    id: tariff
+    attributes:
+      label: Tariff and meters
+      description: The product you're on (e.g. Agile, Intelligent Octopus Go, Flexible), and your meter types if relevant (SMETS1/SMETS2, gas, export, Home Mini).
+      placeholder: e.g. Agile, SMETS2 electricity and gas, no export
+  - type: input
+    id: access
+    attributes:
+      label: Settings
+      description: Whether OCTOPUS_ALLOW_WRITES is on, and OCTOPUS_TOOLSETS if not all.
+      placeholder: e.g. writes off, toolsets all
+  - type: dropdown
+    id: transport
+    attributes:
+      label: Transport and client
+      options:
+        - HTTP — Claude Code
+        - HTTP — other client
+        - stdio — Claude Desktop
+        - stdio — other client
+    validations:
+      required: true

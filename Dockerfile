@@ -1,0 +1,37 @@
+# syntax=docker/dockerfile:1
+
+# The binary is static Go, so the build stage runs on the build machine's own
+# platform and cross-compiles: multi-arch builds don't need emulation.
+FROM --platform=$BUILDPLATFORM golang:1.26 AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY cmd ./cmd
+COPY internal ./internal
+RUN CGO_ENABLED=0 go test ./...
+# Release builds pass the version from the Git tag (e.g. 1.2.3).
+ARG VERSION=0.0.0-dev
+ARG TARGETOS
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath \
+      -ldflags "-s -w -X github.com/mattoddie/octopus-mcp/internal/tools.Version=${VERSION}" \
+      -o /out/octopus-mcp ./cmd/octopus-mcp
+
+# Distroless: no shell, no package manager, just CA certificates, tzdata and a
+# non-root user (65532), so there is very little for CVE scanners to find.
+FROM gcr.io/distroless/static-debian13:nonroot
+LABEL org.opencontainers.image.title="octopus-mcp" \
+      org.opencontainers.image.description="MCP server for Octopus Energy (unofficial)" \
+      org.opencontainers.image.source="https://github.com/mattoddie/octopus-mcp" \
+      org.opencontainers.image.documentation="https://octopus-mcp.mattoddie.dev/docs/" \
+      org.opencontainers.image.licenses="MIT"
+COPY --from=build /out/octopus-mcp /octopus-mcp
+# The server keeps no state: the API key comes from the environment and Kraken
+# tokens live in memory, so there is no volume.
+ENV MCP_TRANSPORT=http \
+    MCP_HTTP_HOST=0.0.0.0 \
+    MCP_HTTP_PORT=8080
+USER nonroot:nonroot
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 CMD ["/octopus-mcp", "healthcheck"]
+ENTRYPOINT ["/octopus-mcp"]

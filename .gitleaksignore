@@ -1,0 +1,4 @@
+# Fake credentials in tests and the mock API, not real secrets.
+internal/octopus/client_test.go:generic-api-key:63
+internal/octopus/octopustest/mock.go:generic-api-key:281
+internal/octopus/octopustest/mock.go:stripe-access-token:23

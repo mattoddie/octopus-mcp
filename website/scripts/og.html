@@ -1,0 +1,49 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@700&display=block">
+<style>
+*{margin:0;box-sizing:border-box}
+body{width:1200px;height:630px;background:#110c05;color:#f7f1e6;font-family:Inter,sans-serif;overflow:hidden;position:relative}
+.bg{position:absolute;inset:0;background:radial-gradient(50% 60% at 15% 20%,rgba(250,204,21,.26),transparent 70%),radial-gradient(45% 55% at 90% 80%,rgba(234,88,12,.28),transparent 70%),radial-gradient(35% 45% at 60% 100%,rgba(245,158,11,.22),transparent 70%)}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.07) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(70% 70% at 40% 40%,#000 30%,transparent 85%)}
+.c{position:absolute;inset:0;padding:64px 90px;display:flex;flex-direction:column;justify-content:center}
+.row{display:flex;align-items:center;gap:28px}
+.row svg{flex:none;border-radius:36px;box-shadow:0 20px 50px -12px rgba(217,119,6,.6)}
+.name{font:700 64px 'Space Grotesk';letter-spacing:-.02em}
+h1{font:700 80px/1.02 'Space Grotesk';letter-spacing:-.03em;margin-top:36px}
+h1 span{background:linear-gradient(100deg,#fef08a,#fcd34d 45%,#fb923c);-webkit-background-clip:text;color:transparent}
+p{font-size:28px;color:#c4b7a0;margin-top:26px}
+.tags{display:flex;gap:12px;margin-top:34px}
+.tags b{font:500 20px 'JetBrains Mono';padding:8px 16px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.05);color:#fde68a}
+</style></head><body><div class="bg"></div><div class="grid"></div>
+<div class="c"><div class="row"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="168" height="168" role="img" aria-label="octopus-mcp logo">
+  <defs>
+    <linearGradient id="om-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FDE047"/>
+      <stop offset="0.5" stop-color="#F59E0B"/>
+      <stop offset="1" stop-color="#C2410C"/>
+    </linearGradient>
+    <radialGradient id="om-glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#om-bg)"/>
+  <circle cx="50" cy="48" r="46" fill="url(#om-glow)"/>
+  <!-- Half-hourly prices through a day: cheap overnight, a peak in the evening. -->
+  <g fill="#FFFFFF" fill-opacity="0.55">
+    <rect x="18" y="80" width="10" height="26" rx="3"/>
+    <rect x="31" y="86" width="10" height="20" rx="3"/>
+    <rect x="57" y="84" width="10" height="22" rx="3"/>
+    <rect x="70" y="70" width="10" height="36" rx="3"/>
+    <rect x="83" y="56" width="10" height="50" rx="3"/>
+    <rect x="96" y="74" width="10" height="32" rx="3"/>
+  </g>
+  <!-- The cheapest half-hour, where the spark lands. -->
+  <rect x="44" y="92" width="10" height="14" rx="3" fill="#FFFFFF"/>
+  <!-- The spark. -->
+  <path d="M71 12 L44 56 H61 L52 82 L84 38 H67 L78 12 Z" fill="#7C2D12" fill-opacity="0.25" transform="translate(2 3)"/>
+  <path d="M71 12 L44 56 H61 L52 82 L84 38 H67 L78 12 Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/>
+</svg><div class="name">octopus-mcp</div></div>
+<h1>Talk to your <span>Octopus energy.</span></h1>
+<p>An unofficial, open-source MCP server for Claude and other AI assistants.</p>
+<div class="tags"><b>22 tools</b><b>Agile prices</b><b>Read-only by default</b><b>MIT</b></div></div></body></html>

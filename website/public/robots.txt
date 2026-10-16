@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://octopus-mcp.mattoddie.dev/sitemap-index.xml

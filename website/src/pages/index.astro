@@ -3,6 +3,24 @@ import logo from "../../../docs/assets/logo.svg?raw";
 import { prompts, toolsets, totals } from "../lib/tools";
 
 const GITHUB = "https://github.com/mattoddie/octopus-mcp";
+
+// Illustrative half-hourly prices (pence/kWh) for the hero chart, not real data: an overnight low,
+// a morning bump, a sunny-afternoon dip below zero and a 4–7pm peak.
+const prices = [15, 14, 13, 12, 11, 11, 10, 11, 12, 14, 18, 22, 25, 27, 26, 24, 21, 18, 16, 14, 12, 10, 8, 6, 4, 3, -1, -2, 2, 5, 9, 14, 20, 30, 38, 42, 40, 36, 30, 26, 22, 20, 19, 18, 17, 16, 16, 15];
+const BAR = { x0: 24, step: 29.4, width: 21, zero: 330, scale: 6.6 };
+const cheapestStart = prices.reduce((best, _, i) => {
+  if (i + 4 > prices.length) return best;
+  const sum = prices.slice(i, i + 4).reduce((a, b) => a + b, 0);
+  return sum < best.sum ? { i, sum } : best;
+}, { i: 0, sum: Infinity }).i;
+const bars = prices.map((v, i) => {
+  const h = Math.max(3, Math.abs(v) * BAR.scale);
+  const cls = [v < 0 ? "neg" : "", i >= cheapestStart && i < cheapestStart + 4 ? "cheap" : "", i >= 34 && i < 38 ? "peak" : ""].filter(Boolean).join(" ");
+  return { x: BAR.x0 + i * BAR.step, y: v >= 0 ? BAR.zero - h : BAR.zero, h, cls };
+});
+const slotTime = (i: number) => `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`;
+const cheapWindow = { x: BAR.x0 + cheapestStart * BAR.step - 5, width: BAR.step * 4 + 1, label: `${slotTime(cheapestStart)} – ${slotTime(cheapestStart + 4)}` };
+const nowSlot = 20;
 const title = "octopus-mcp: talk to your energy";
 const description =
   "An unofficial, open-source MCP server for Octopus Energy. Ask Claude and other AI assistants about your smart meter usage and costs, Agile prices, tariffs, bills and EV charging, and let them join Saving Sessions when you allow it. Runs in Docker.";
@@ -119,33 +137,34 @@ const connectSnippet = `claude mcp add --transport http octopus \\
 
     <main id="main">
       <!-- Hero -->
-      <section class="hero">
-        <svg class="mesh" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <section class="hero scene">
+        <svg class="scene-art" viewBox="0 0 1440 380" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
           <defs>
-            <linearGradient id="link" x1="0" x2="1">
-              <stop offset="0" stop-color="#facc15" />
-              <stop offset="0.55" stop-color="#f59e0b" />
-              <stop offset="1" stop-color="#ea580c" />
+            <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#f59e0b" />
+              <stop offset="1" stop-color="#c2410c" stop-opacity="0.55" />
             </linearGradient>
           </defs>
-          <!-- Half-hour gridlines, with a day of prices: low overnight, a peak in the early evening. -->
-          <g class="rules">
-            <path d="M0 160 H1200" /><path d="M0 260 H1200" /><path d="M0 360 H1200" /><path d="M0 460 H1200" /><path d="M0 560 H1200" />
+          <g class="window">
+            <rect x={cheapWindow.x} y="20" width={cheapWindow.width} height="340" rx="12" />
+            <text x={cheapWindow.x + cheapWindow.width / 2} y="44" text-anchor="middle">{cheapWindow.label}</text>
           </g>
-          <g class="links">
-            <path d="M60 520 L180 560 L300 590 L420 560 L540 470 L660 430 L780 300 L860 170 L940 250 L1040 400 L1140 450" />
-            <path d="M300 590 L360 640" />
-            <path d="M860 170 L900 90" />
+          <line x1="0" y1={BAR.zero} x2="1440" y2={BAR.zero} class="axis" />
+          <g class="bars">
+            {bars.map((b) => <rect x={b.x} y={b.y} width={BAR.width} height={b.h} rx="4" class={b.cls} />)}
           </g>
-          <g class="pulses">
-            <path d="M60 520 L180 560 L300 590 L420 560 L540 470 L660 430 L780 300 L860 170 L940 250 L1040 400 L1140 450" />
-            <path d="M860 170 L900 90" />
+          <line class="now" x1={BAR.x0 + nowSlot * BAR.step + BAR.width / 2} y1="70" x2={BAR.x0 + nowSlot * BAR.step + BAR.width / 2} y2="356" />
+          <text class="now-label" x={BAR.x0 + nowSlot * BAR.step + BAR.width / 2} y="62" text-anchor="middle">now</text>
+          <g class="ticks">
+            {[0, 12, 24, 36, 47].map((i) => <text x={BAR.x0 + i * BAR.step + BAR.width / 2} y="372" text-anchor="middle">{slotTime(i)}</text>)}
           </g>
-          <g class="nodes">
-            <circle cx="60" cy="520" r="5" /><circle cx="180" cy="560" r="6" /><circle cx="300" cy="590" r="10" />
-            <circle cx="420" cy="560" r="6" /><circle cx="540" cy="470" r="5" /><circle cx="660" cy="430" r="6" />
-            <circle cx="780" cy="300" r="5" /><circle cx="860" cy="170" r="9" /><circle cx="940" cy="250" r="6" />
-            <circle cx="1040" cy="400" r="5" /><circle cx="1140" cy="450" r="6" /><circle cx="360" cy="640" r="4" /><circle cx="900" cy="90" r="4" />
+          <g class="meter" transform="translate(40 70)">
+            <rect width="190" height="64" rx="14" />
+            <circle cx="24" cy="32" r="6" />
+            <text class="live" x="42" y="31">0.42 kW</text>
+            <text class="yesterday" x="42" y="31">11.8 kWh</text>
+            <text class="live sub" x="42" y="50">live demand</text>
+            <text class="yesterday sub" x="42" y="50">yesterday</text>
           </g>
         </svg>
 
@@ -171,26 +190,21 @@ const connectSnippet = `claude mcp add --transport http octopus \\
           <div class="chat" aria-label="Example conversation">
             <div class="chat-bar"><span></span><span></span><span></span><em>Claude · octopus</em></div>
             <div class="chat-body" id="chat">
-              <div class="msg user" data-step="0">What did electricity cost me last week, and when should I run the dishwasher tonight?</div>
+              <div class="msg user" data-step="0">When's the cheapest time to run the dishwasher today?</div>
               <div class="calls" data-step="1">
-                <span class="call"><i></i>octopus_get_account<b>Agile · London</b></span>
-                <span class="call"><i></i>octopus_get_consumption<b>7 days · by day</b></span>
                 <span class="call"><i></i>octopus_find_cheapest_slots<b>2 h · 1.5 kWh</b></span>
               </div>
               <div class="msg bot" data-step="2">
-                Last week you used <mark>58.4 kWh</mark> for <mark>£11.92</mark>, including standing charges: 15.9p/kWh on average.
-                Wednesday was the priciest day, with 4.1 kWh used between 4pm and 7pm when Agile was over 30p.
-                <br /><br />Tonight the cheapest two hours are <strong>01:30 to 03:30</strong> at <mark>7.8p/kWh</mark>: about 12p for the
-                dishwasher, against 46p if you started it now.
+                Start it at <mark>{slotTime(cheapestStart)}</mark>. The two hours from then average <mark>0.5p/kWh</mark>, and prices
+                dip below zero at 13:00, so it costs about 1p. Starting it now would be about 18p.
               </div>
-              <div class="msg user" data-step="3">Nice. Any Saving Sessions this week? Sign me up.</div>
+              <div class="msg user" data-step="3">Nice. How much did we use yesterday?</div>
               <div class="calls" data-step="4">
-                <span class="call"><i></i>octopus_get_saving_sessions<b>region C</b></span>
-                <span class="call write"><i></i>octopus_join_saving_session<b>Thu 17:30</b></span>
+                <span class="call"><i></i>octopus_get_consumption<b>yesterday · by hour</b></span>
               </div>
               <div class="msg bot" data-step="5">
-                You're in for <strong>Thursday, 17:30 to 18:30</strong>, at <mark>1,800 points per kWh</mark> saved. You usually use about
-                1.2 kWh then, so holding off the oven and the tumble dryer could earn you around 1,000 points. ✅
+                <mark>11.8 kWh</mark> for <mark>£2.73</mark>, including the standing charge. The biggest chunk was the evening peak:
+                <mark>2.1 kWh</mark> between 5pm and 7pm, when prices were over 30p.
               </div>
             </div>
           </div>
@@ -430,31 +444,49 @@ const connectSnippet = `claude mcp add --transport http octopus \\
         });
       }
 
-      // Play the example conversation once it scrolls into view.
+      // Play the example conversation when the chat is on screen, and loop it. Steps also
+      // switch the chart: the first reply lights up the cheapest window, the second the meter.
+      const hero = document.querySelector<HTMLElement>(".hero.scene");
       const chat = document.getElementById("chat");
       const steps = chat ? [...chat.querySelectorAll<HTMLElement>("[data-step]")] : [];
+      const sceneAt: Record<number, string> = { 2: "window-on", 5: "usage-on" };
       const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (chat && !reduce) {
+      if (hero && chat && reduce) {
+        hero.classList.add(...Object.values(sceneAt));
+      } else if (hero && chat) {
         chat.classList.add("animate");
-        const delays = [300, 900, 2100, 1900, 900, 1700];
+        const delays = [300, 900, 1900, 1900, 900, 1700];
+        let timers: number[] = [];
+        let visible = false;
+        let running = false;
+        const reset = () => {
+          timers.forEach(clearTimeout);
+          timers = [];
+          steps.forEach((el) => el.classList.remove("shown"));
+          chat.querySelectorAll(".call").forEach((c) => c.classList.remove("done"));
+          hero.classList.remove(...Object.values(sceneAt));
+        };
         const play = () => {
+          running = true;
+          reset();
           let t = 0;
           steps.forEach((el, i) => {
             t += delays[i] ?? 1000;
-            setTimeout(() => {
+            timers.push(window.setTimeout(() => {
               el.classList.add("shown");
+              if (sceneAt[i]) hero.classList.add(sceneAt[i]);
               for (const [j, c] of [...el.querySelectorAll<HTMLElement>(".call")].entries()) {
-                setTimeout(() => c.classList.add("done"), 450 + j * 380);
+                timers.push(window.setTimeout(() => c.classList.add("done"), 450 + j * 380));
               }
-            }, t);
+            }, t));
           });
+          // Hold the finished chart for a while, then start again if the chat is still in view.
+          timers.push(window.setTimeout(() => (visible ? play() : (running = false)), t + 7000));
         };
-        new IntersectionObserver((entries, obs) => {
-          if (entries.some((e) => e.isIntersecting)) {
-            play();
-            obs.disconnect();
-          }
-        }, { threshold: 0.35 }).observe(chat);
+        new IntersectionObserver((entries) => {
+          visible = entries.some((e) => e.isIntersecting);
+          if (visible && !running) play();
+        }, { threshold: 0.2 }).observe(chat);
       }
     </script>
 
@@ -541,15 +573,27 @@ const connectSnippet = `claude mcp add --transport http octopus \\
         mask-image: radial-gradient(60% 60% at 50% 40%, #000 30%, transparent 80%);
         opacity: 0.3;
       }
-      .mesh { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.55; }
-      .mesh .rules path { fill: none; stroke: #fcd34d; stroke-opacity: 0.12; stroke-width: 1; stroke-dasharray: 2 6; }
-      .mesh .links path { fill: none; stroke: url(#link); stroke-width: 1.4; stroke-opacity: 0.4; stroke-linejoin: round; }
-      .mesh .pulses path { fill: none; stroke: #fef08a; stroke-width: 2; stroke-linecap: round; stroke-dasharray: 6 600; animation: pulse 7s linear infinite; }
-      .mesh .pulses path:nth-child(2) { animation-delay: -2.5s; animation-duration: 9s; }
-      .mesh .pulses path:nth-child(3) { animation-delay: -4s; animation-duration: 5s; }
-      .mesh .nodes circle { fill: #fde68a; filter: drop-shadow(0 0 6px #f59e0b); animation: blink 4s ease-in-out infinite; }
-      .mesh .nodes circle:nth-child(3n) { animation-delay: -1.3s; }
-      .mesh .nodes circle:nth-child(3n + 1) { animation-delay: -2.6s; }
+      /* The price chart along the bottom of the hero; the chat steps switch its states. */
+      .hero.scene { padding-bottom: 340px; }
+      .scene-art { position: absolute; left: 50%; bottom: 0; width: 1440px; height: 380px; transform: translateX(-50%); z-index: -1; }
+      .scene-art .axis { stroke: rgba(255, 255, 255, 0.22); }
+      .scene-art .bars rect { fill: url(#bar); transition: fill 0.8s ease; }
+      .scene-art .bars rect.neg { fill: #38bdf8; }
+      .scene-art .window rect { fill: rgba(52, 211, 153, 0.12); stroke: rgba(52, 211, 153, 0.6); stroke-dasharray: 5 5; }
+      .scene-art .window text { fill: #34d399; font: 600 14px var(--sans); }
+      .scene-art .window { opacity: 0; transition: opacity 0.8s ease; }
+      .scene-art .now { stroke: rgba(255, 255, 255, 0.6); stroke-width: 1.5; stroke-dasharray: 3 4; }
+      .scene-art .now-label, .scene-art .ticks text { fill: var(--muted); font: 12px var(--mono); }
+      .scene-art .meter rect { fill: rgba(26, 20, 12, 0.92); stroke: #f59e0b; stroke-width: 2; }
+      .scene-art .meter circle { fill: #fde047; animation: blink 1.6s ease-in-out infinite; }
+      .scene-art .meter text { fill: #fde047; font: 500 22px var(--mono); }
+      .scene-art .meter text.sub { fill: var(--muted); font: 12px var(--sans); }
+      .scene-art .meter .yesterday, .hero.usage-on .scene-art .meter .live { display: none; }
+      .hero.usage-on .scene-art .meter .yesterday { display: inline; }
+      .hero.window-on .scene-art .window { opacity: 1; }
+      .hero.window-on .scene-art .bars rect.cheap { fill: #34d399; }
+      .hero.usage-on .scene-art .bars rect.peak { fill: #fde047; }
+      .hero.scene .hero-grid { grid-template-columns: minmax(0, 1fr) 440px; align-items: start; }
       @keyframes pulse { from { stroke-dashoffset: 600; } to { stroke-dashoffset: 0; } }
       @keyframes blink { 50% { opacity: 0.45; } }
 
@@ -589,15 +633,15 @@ const connectSnippet = `claude mcp add --transport http octopus \\
 
       /* Chat demo */
       .chat {
-        border-radius: 20px; border: 1px solid var(--line);
-        background: linear-gradient(180deg, rgba(40, 27, 10, 0.9), rgba(19, 13, 5, 0.92));
+        border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(22, 16, 9, 0.86); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
         box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.02) inset, 0 0 80px -20px rgba(245, 158, 11, 0.3);
         overflow: hidden;
       }
       .chat-bar { display: flex; align-items: center; gap: 7px; padding: 13px 16px; border-bottom: 1px solid var(--line); }
       .chat-bar span { width: 11px; height: 11px; border-radius: 50%; background: #3b2e18; }
       .chat-bar em { margin-left: auto; font-style: normal; color: var(--muted); font-size: 12.5px; font-family: var(--mono); }
-      .chat-body { padding: 22px; display: flex; flex-direction: column; gap: 14px; min-height: 490px; }
+      .chat-body { padding: 20px; display: flex; flex-direction: column; gap: 12px; min-height: 470px; }
       .msg { max-width: 88%; padding: 12px 15px; border-radius: 14px; font-size: 14.5px; line-height: 1.55; }
       .msg.user { align-self: flex-end; background: linear-gradient(135deg, #d97706, #b45309); color: #fff; border-bottom-right-radius: 4px; }
       .msg.bot { align-self: flex-start; background: var(--panel-2); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
@@ -747,6 +791,9 @@ const connectSnippet = `claude mcp add --transport http octopus \\
         .examples, .features { grid-template-columns: repeat(2, 1fr); }
         .steps { grid-template-columns: minmax(0, 1fr); }
         .chat-body { min-height: 0; }
+        .hero.scene { padding-bottom: 0; display: flex; flex-direction: column; }
+        .hero.scene .hero-grid { grid-template-columns: minmax(0, 1fr); }
+        .hero.scene .scene-art { order: 2; position: relative; left: auto; bottom: auto; transform: none; display: block; width: 100%; height: 260px; margin-top: 24px; }
       }
       @media (max-width: 640px) {
         .wrap { width: calc(100% - 32px); }

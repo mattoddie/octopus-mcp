@@ -46,6 +46,75 @@ func TestRawGraphQLGating(t *testing.T) {
 	}
 }
 
+// Regression tests for ways around the read-only gate that a regular
+// expression missed: GraphQL treats commas and a byte order mark as white
+// space, and a document can hold several operations.
+func TestRawGraphQLGateBypasses(t *testing.T) {
+	readOnly := config.AllTools()
+	readOnly.AllowWrites = false
+	env := newEnv(t, readOnly)
+	env.mock.OnGraphQL(`.`, octopustest.Data(Obj{"ok": true}))
+	writer := newEnv(t)
+	writer.mock.OnGraphQL(`.`, octopustest.Data(Obj{"ok": true}))
+
+	for _, q := range []string{
+		`,mutation { updateBoostCharge(input: {deviceId: "x", action: BOOST}) { id } }`,
+		"\uFEFFmutation { updateBoostCharge(input: {deviceId: \"x\", action: BOOST}) { id } }",
+		`query{a},mutation{b}`,
+		`{a}mutation{b}`,
+		"query { a }\r\nmutation { b }",
+		`fragment F on Query { a } mutation { b }`,
+	} {
+		if msg := env.callErr("octopus_graphql", map[string]any{"query": q}); !strings.Contains(msg, "write access is disabled") {
+			t.Errorf("%q: %s", q, msg)
+		}
+	}
+	if n := len(env.mock.GraphQLRequests()); n != 0 {
+		t.Errorf("refused documents reached Octopus: %d requests", n)
+	}
+
+	// Subscriptions are refused even with writes.
+	for _, e := range []*testEnv{env, writer} {
+		if msg := e.callErr("octopus_graphql", map[string]any{"query": `,subscription { a }`}); !strings.Contains(msg, "subscriptions") {
+			t.Errorf("subscription: %s", msg)
+		}
+	}
+
+	// Credential operations are refused with writes off and on, however they are spelled.
+	for _, q := range []string{
+		`,mutation { regenerateSecretKey { key } }`,
+		`mutation { regenerateSecretKey { key } }`,
+		`query { viewer { api_key } }`,
+		`query { a: obtainKrakenToken(input: {}) { token } }`,
+		`query { viewer { Password } }`,
+	} {
+		for _, e := range []*testEnv{env, writer} {
+			if msg := e.callErr("octopus_graphql", map[string]any{"query": q}); !strings.Contains(msg, "API keys") {
+				t.Errorf("%q: %s", q, msg)
+			}
+		}
+	}
+
+	// Documents that can't be lexed are refused rather than guessed at.
+	for _, q := range []string{"query { a(s: \"unterminated) }", "{ a } \x00 mutation { b }", "query { a } garbage"} {
+		if msg := env.callErr("octopus_graphql", map[string]any{"query": q}); !strings.Contains(msg, "could not read the GraphQL document") {
+			t.Errorf("%q: %s", q, msg)
+		}
+	}
+
+	// Mutation keywords inside strings, block strings and comments don't count, and fragments are fine.
+	for _, q := range []string{
+		`query { a(s: "} mutation { b") }`,
+		"query { a(s: \"\"\"\n} mutation { b }\"\"\") }",
+		"query { a } # } mutation { b }",
+		`query { ...F } fragment F on Query { a }`,
+	} {
+		if res := env.obj("octopus_graphql", map[string]any{"query": q}); res["ok"] != true {
+			t.Errorf("%q: %v", q, res)
+		}
+	}
+}
+
 func TestRawREST(t *testing.T) {
 	env := newEnv(t)
 	env.mock.On("GET", "/electricity-meter-points/1000000000001/", octopustest.JSON(Obj{"gsp": "_C", "mpan": "1000000000001", "profile_class": 1}))

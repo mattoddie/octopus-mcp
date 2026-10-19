@@ -118,10 +118,24 @@ func checkURL(name, v string) (string, error) {
 	if err != nil || u.Host == "" {
 		return "", fmt.Errorf("%s is not a valid URL: %s", name, v)
 	}
-	if u.Scheme != "https" && u.Scheme != "http" {
-		return "", fmt.Errorf("%s must use https:// (or http://), got %s", name, v)
+	if u.User != nil {
+		return "", fmt.Errorf("%s must not contain a user name or password; the API key is set with OCTOPUS_API_KEY", name)
+	}
+	// The API key and tokens must not cross the internet in cleartext; plain
+	// http is only for a local mock or proxy.
+	if u.Scheme != "https" && !(u.Scheme == "http" && isLoopback(u.Hostname())) {
+		return "", fmt.Errorf("%s must use https:// (http:// is only allowed for localhost), got %s", name, v)
 	}
 	return strings.TrimRight(v, "/"), nil
+}
+
+// isLoopback reports whether a URL host name is localhost or a loopback address.
+func isLoopback(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // AccountRe matches an Octopus account number such as A-1234ABCD.

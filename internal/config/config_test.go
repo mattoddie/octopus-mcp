@@ -55,15 +55,18 @@ func TestOverrides(t *testing.T) {
 
 func TestValidation(t *testing.T) {
 	for env, want := range map[string]string{
-		"":                                  "OCTOPUS_API_KEY is required",
-		"OCTOPUS_ALLOW_WRITES=maybe":        "must be true or false",
-		"MCP_TRANSPORT=sse":                 "stdio or http",
-		"OCTOPUS_TOOLSETS=tariffs,nope":     `unknown toolset "nope"`,
-		"OCTOPUS_API_URL=ftp://x":           "https://",
-		"OCTOPUS_TIMEOUT_MS=-1":             "positive integer",
-		"MCP_HTTP_PORT=http":                "positive integer",
-		"OCTOPUS_ACCOUNT=12345":             "account number like A-1234ABCD",
-		"OCTOPUS_API_KEY_FILE=/nonexistent": "OCTOPUS_API_KEY_FILE",
+		"":                              "OCTOPUS_API_KEY is required",
+		"OCTOPUS_ALLOW_WRITES=maybe":    "must be true or false",
+		"MCP_TRANSPORT=sse":             "stdio or http",
+		"OCTOPUS_TOOLSETS=tariffs,nope": `unknown toolset "nope"`,
+		"OCTOPUS_API_URL=ftp://x":       "https://",
+		"OCTOPUS_API_URL=http://api.octopus.energy":       "only allowed for localhost",
+		"OCTOPUS_GRAPHQL_URL=http://example.com/graphql/": "only allowed for localhost",
+		"OCTOPUS_API_URL=https://user@api.example.com":    "must not contain a user name",
+		"OCTOPUS_TIMEOUT_MS=-1":                           "positive integer",
+		"MCP_HTTP_PORT=http":                              "positive integer",
+		"OCTOPUS_ACCOUNT=12345":                           "account number like A-1234ABCD",
+		"OCTOPUS_API_KEY_FILE=/nonexistent":               "OCTOPUS_API_KEY_FILE",
 	} {
 		m := map[string]string{}
 		if env != "" {
@@ -181,5 +184,17 @@ func TestHealthcheckURL(t *testing.T) {
 	}
 	if _, err := HealthcheckURL(MapEnv(map[string]string{"MCP_HTTP_PORT": "x"})); err == nil {
 		t.Error("bad port accepted")
+	}
+}
+
+func TestLoopbackURLsMayUseHTTP(t *testing.T) {
+	for _, u := range []string{"http://localhost:8000", "http://127.0.0.1:8000", "http://[::1]:8000", "https://api.example.com"} {
+		if _, err := Load(MapEnv(map[string]string{"OCTOPUS_API_KEY": key, "OCTOPUS_API_URL": u})); err != nil {
+			t.Errorf("%s: %v", u, err)
+		}
+	}
+	_, err := Load(MapEnv(map[string]string{"OCTOPUS_API_KEY": key, "OCTOPUS_API_URL": "https://user:" + "hunter2" + "@api.example.com"}))
+	if err == nil || strings.Contains(err.Error(), "hunter2") {
+		t.Errorf("userinfo: %v", err)
 	}
 }

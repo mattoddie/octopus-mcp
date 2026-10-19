@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -103,7 +104,12 @@ type Client struct {
 	acctMu   sync.Mutex
 	accounts []string
 
-	// secrets holds the current Kraken tokens for redaction, readable without c.mu.
+	// loginErr and loginFailed remember the last failed token request (see loginBackoff).
+	loginErr    error
+	loginFailed time.Time
+
+	// secrets holds the current and recent Kraken tokens for redaction, readable without c.mu.
+	// Old tokens stay in the list after a refresh, since they may still turn up in errors.
 	secrets atomic.Pointer[[]string]
 }
 
@@ -111,21 +117,26 @@ type Client struct {
 func New(cfg config.Octopus) *Client {
 	return &Client{
 		cfg:  cfg,
-		http: &http.Client{Timeout: cfg.Timeout, CheckRedirect: noCrossHostRedirect},
+		http: &http.Client{Timeout: cfg.Timeout, CheckRedirect: noRedirects},
 		Now:  time.Now,
 	}
 }
 
-// noCrossHostRedirect stops credentials from following a redirect to another host.
-func noCrossHostRedirect(req *http.Request, via []*http.Request) error {
-	if len(via) >= 5 {
-		return errors.New("too many redirects")
-	}
-	if req.URL.Host != via[0].URL.Host {
-		return fmt.Errorf("refusing to follow a redirect to another host (%s)", req.URL.Host)
-	}
-	return nil
-}
+// noRedirects returns redirects as responses instead of following them, so the
+// API key and tokens never go anywhere but the configured URLs (not even to the
+// same host over plain HTTP). Request URLs already carry the trailing slash
+// Octopus would otherwise redirect to.
+func noRedirects(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+
+// MaxResponseBytes bounds how much of one response is read.
+const MaxResponseBytes = 64 << 20
+
+// maxRedactedSecrets bounds how many past Kraken tokens are kept for redaction.
+const maxRedactedSecrets = 16
+
+// loginBackoff is how long a rejected API key or refresh token is remembered,
+// so a bad key isn't sent to Octopus again on every call.
+const loginBackoff = 30 * time.Second
 
 // Config returns the client's settings (the API key is included; never print it).
 func (c *Client) Config() config.Octopus { return c.cfg }
@@ -143,6 +154,33 @@ func (c *Client) redact(s string) string {
 		}
 	}
 	return s
+}
+
+// redactValue redacts every string in a decoded JSON value.
+func (c *Client) redactValue(v any) any {
+	switch x := v.(type) {
+	case string:
+		return c.redact(x)
+	case map[string]any:
+		if x == nil {
+			return x
+		}
+		out := make(map[string]any, len(x))
+		for k, e := range x {
+			out[c.redact(k)] = c.redactValue(e)
+		}
+		return out
+	case []any:
+		if x == nil {
+			return x
+		}
+		out := make([]any, len(x))
+		for i, e := range x {
+			out[i] = c.redactValue(e)
+		}
+		return out
+	}
+	return v
 }
 
 // ---------------------------------------------------------------- REST
@@ -298,8 +336,16 @@ func (c *Client) graphql(ctx context.Context, endpoint, query string, vars Obj, 
 		}
 	}
 	if len(res.Errors) > 0 {
+		// Error() quotes extensions (errorDescription, boostChargeRefusalReasons) as
+		// well as the message, so scrub every string in them.
 		for i := range res.Errors {
 			res.Errors[i].Message = c.redact(res.Errors[i].Message)
+			if ext, ok := c.redactValue(map[string]any(res.Errors[i].Extensions)).(map[string]any); ok {
+				res.Errors[i].Extensions = ext
+			}
+			if path, ok := c.redactValue(res.Errors[i].Path).([]any); ok {
+				res.Errors[i].Path = path
+			}
 		}
 		return res.Errors
 	}
@@ -322,6 +368,9 @@ func (c *Client) Token(ctx context.Context, force bool) (string, error) {
 	if c.cfg.APIKey == "" {
 		return "", errors.New("OCTOPUS_API_KEY is not set")
 	}
+	if c.loginErr != nil && now.Before(c.loginFailed.Add(loginBackoff)) {
+		return "", c.loginErr
+	}
 	// A refresh token avoids sending the API key again; fall back to the key if it fails.
 	var inputs []Obj
 	if c.refresh != "" && now.Before(c.refreshExp) {
@@ -339,7 +388,8 @@ func (c *Client) Token(ctx context.Context, force bool) (string, error) {
 			c.tokenExp = jwtExpiry(token, now)
 			c.refresh = Str(res, "obtainKrakenToken", "refreshToken")
 			c.refreshExp = time.Time{}
-			c.secrets.Store(&[]string{c.token, c.refresh})
+			c.rememberSecrets(c.token, c.refresh)
+			c.loginErr = nil
 			if n, ok := Num(res, "obtainKrakenToken", "refreshExpiresIn"); ok {
 				if n > 1e9 { // a Unix timestamp
 					c.refreshExp = time.Unix(int64(n), 0)
@@ -355,7 +405,32 @@ func (c *Client) Token(ctx context.Context, force bool) (string, error) {
 		lastErr = err
 	}
 	c.token, c.refresh = "", ""
-	return "", fmt.Errorf("could not get a Kraken token with OCTOPUS_API_KEY (check the key is current; regenerating it on the Octopus dashboard invalidates the old one): %s", c.redact(lastErr.Error()))
+	err := fmt.Errorf("could not get a Kraken token with OCTOPUS_API_KEY (check the key is current; regenerating it on the Octopus dashboard invalidates the old one): %s", c.redact(lastErr.Error()))
+	// Back off only when Octopus answered and said no; a network error may clear up straight away.
+	var gerr GraphQLErrors
+	var herr *Error
+	if errors.As(lastErr, &gerr) || (errors.As(lastErr, &herr) && herr.Status/100 == 4) {
+		c.loginErr, c.loginFailed = err, now
+	}
+	return "", err
+}
+
+// rememberSecrets adds newly issued tokens to the redaction list, keeping the
+// most recent maxRedactedSecrets.
+func (c *Client) rememberSecrets(tokens ...string) {
+	var list []string
+	if old := c.secrets.Load(); old != nil {
+		list = append(list, *old...)
+	}
+	for _, t := range tokens {
+		if t != "" && !slices.Contains(list, t) {
+			list = append(list, t)
+		}
+	}
+	if len(list) > maxRedactedSecrets {
+		list = list[len(list)-maxRedactedSecrets:]
+	}
+	c.secrets.Store(&list)
 }
 
 // jwtExpiry reads the exp claim of a JWT, defaulting to 55 minutes from now.
@@ -452,11 +527,14 @@ func (c *Client) do(ctx context.Context, method, u string, payload []byte, prepa
 		if err != nil {
 			return nil, fmt.Errorf("%s: could not reach Octopus: %s", label, c.redact(err.Error()))
 		}
-		data, readErr := io.ReadAll(io.LimitReader(resp.Body, 64<<20))
+		data, readErr := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBytes+1))
 		resp.Body.Close()
+		if len(data) > MaxResponseBytes {
+			return nil, fmt.Errorf("%s: the response is larger than %d MiB; ask for a shorter period or fewer items", label, MaxResponseBytes>>20)
+		}
 		if resp.StatusCode/100 == 2 {
 			if readErr != nil {
-				return nil, fmt.Errorf("%s: reading the response: %w", label, readErr)
+				return nil, fmt.Errorf("%s: reading the response: %s", label, c.redact(readErr.Error()))
 			}
 			return data, nil
 		}
@@ -464,7 +542,10 @@ func (c *Client) do(ctx context.Context, method, u string, payload []byte, prepa
 		if strings.Contains(u, "graphql") && len(data) > 0 && bytes.Contains(data, []byte(`"errors"`)) && resp.StatusCode != http.StatusTooManyRequests {
 			return data, nil
 		}
-		if (resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable) && attempt < maxRetries {
+		// A POST (a GraphQL query or mutation) is retried only when rate-limited, which means
+		// it wasn't run; a 503 might come after a mutation took effect.
+		retry := resp.StatusCode == http.StatusTooManyRequests || (resp.StatusCode == http.StatusServiceUnavailable && method != http.MethodPost)
+		if retry && attempt < maxRetries {
 			delay := time.Duration(500<<attempt) * time.Millisecond
 			if s, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil && s > 0 {
 				delay = min(time.Duration(s)*time.Second, 10*time.Second)
@@ -529,6 +610,8 @@ func errorMessage(status int, data []byte) string {
 
 func hint(status int, u string) string {
 	switch {
+	case status/100 == 3:
+		return " Octopus redirected the request, and redirects aren't followed so that credentials only go to the configured URLs. Check OCTOPUS_API_URL, OCTOPUS_GRAPHQL_URL and OCTOPUS_BACKEND_GRAPHQL_URL."
 	case status == http.StatusUnauthorized:
 		return " Octopus rejected the API key. Check OCTOPUS_API_KEY is the current key from your Octopus dashboard (Personal details → API access)."
 	case status == http.StatusForbidden || (status == http.StatusNotFound && strings.Contains(u, "/v1/accounts/")):

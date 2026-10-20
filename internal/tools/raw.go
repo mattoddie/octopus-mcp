@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/mattoddie/octopus-mcp/internal/octopus"
 )
@@ -103,7 +104,12 @@ func registerRaw(c *Context) {
 			return nil, errors.New("path is not validly percent-encoded")
 		}
 		p = strings.TrimPrefix(strings.TrimSpace(p), "/v1")
-		if !strings.HasPrefix(p, "/") || strings.Contains(p, "..") || strings.ContainsAny(p, "?#\\") || strings.Contains(p, "//") || strings.Contains(p, "/./") || strings.HasPrefix(p, "/graphql") {
+		// One round of decoding only: a '%' left over (from %25) would be decoded again
+		// by Octopus, turning %252e%252e into "..".
+		if strings.ContainsAny(p, "%") || strings.ContainsFunc(p, unicode.IsControl) {
+			return nil, errors.New("path must be percent-encoded at most once and must not contain '%' or control characters after decoding")
+		}
+		if !strings.HasPrefix(p, "/") || strings.Contains(p, "..") || strings.ContainsAny(p, "?#\\") || strings.Contains(p, "//") || strings.Contains(p, "/./") || strings.HasSuffix(p, "/.") || strings.HasPrefix(strings.ToLower(p), "/graphql") {
 			return nil, errors.New("path must start with /, must not contain '..', './' or '//' segments, must not include a query string (use query), and can't be the GraphQL endpoint (use octopus_graphql)")
 		}
 		q := url.Values{}

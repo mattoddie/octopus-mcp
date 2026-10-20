@@ -128,3 +128,16 @@ func TestRawREST(t *testing.T) {
 		}
 	}
 }
+
+func TestRawRESTRejectsDoubleEncoding(t *testing.T) {
+	env := newEnv(t)
+	for _, p := range []string{"/%252e%252e/graphql/", "/products/%2525", "/%2e%2e/graphql/", "/GraphQL/", "/products/.", "/products/%0aX"} {
+		msg := env.callErr("octopus_rest_get", map[string]any{"path": p})
+		if !strings.Contains(msg, "path must") {
+			t.Errorf("%s: %s", p, msg)
+		}
+	}
+	if n := len(env.mock.Requests()); n != 0 {
+		t.Errorf("rejected paths reached Octopus: %d requests", n)
+	}
+}

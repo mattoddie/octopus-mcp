@@ -6,6 +6,8 @@ For octopus-mcp, the "public API" is the set of tool names, their arguments, the
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-20
+
 Fixes from a security review.
 
 ### Breaking changes
@@ -70,6 +72,7 @@ First release, not yet tagged. It hasn't yet been tested against a live Octopus 
 - Multi-arch distroless Docker image (`linux/amd64`, `linux/arm64`) published to GHCR on each release, with SBOM and provenance attestation.
 - Documentation, including a tool reference generated from the code, and a website.
 
-[Unreleased]: https://github.com/mattoddie/octopus-mcp/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/mattoddie/octopus-mcp/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/mattoddie/octopus-mcp/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/mattoddie/octopus-mcp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/mattoddie/octopus-mcp/releases/tag/v0.1.0

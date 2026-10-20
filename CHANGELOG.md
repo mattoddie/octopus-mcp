@@ -6,6 +6,37 @@ For octopus-mcp, the "public API" is the set of tool names, their arguments, the
 
 ## [Unreleased]
 
+Fixes from a security review.
+
+### Breaking changes
+
+- With `MCP_TRANSPORT=http`, the server refuses to start if `MCP_AUTH_TOKEN` is shorter than 16 characters. Generate one with `openssl rand -hex 32`.
+- `MCP_ALLOW_UNAUTHENTICATED=true` now needs `MCP_ALLOWED_HOSTS` too: without a token, the allow-list is the only protection against DNS rebinding.
+- When `MCP_ALLOWED_HOSTS` is set, requests with an `Origin` header that isn't on the list are refused. An entry without a port matches an `Origin` only on the scheme's default port, so a browser-based client on another port needs a `host:port` entry.
+- `/mcp` only accepts `POST`, with a valid JSON body of at most 4 MiB.
+- `OCTOPUS_API_URL`, `OCTOPUS_GRAPHQL_URL` and `OCTOPUS_BACKEND_GRAPHQL_URL` must use `https://` (`http://` only for localhost) and can't contain a user name or password.
+- `octopus_graphql` refuses any document that mentions tokens, API keys or passwords even with writes off, refuses subscriptions, and refuses documents it can't parse.
+
+### Security
+
+- Fix a bypass of the read-only switch in `octopus_graphql`: a mutation preceded by a comma or a byte order mark, which GraphQL ignores, was taken for a query, so `,mutation { regenerateSecretKey { key } }` ran with writes off. Documents are now read with a GraphQL lexer that follows the specification, and every operation in them must be a query unless writes are on.
+- Check the `Origin` header against `MCP_ALLOWED_HOSTS`, as well as `Host`.
+- Don't follow redirects from Octopus at all; same-host redirects, including https to http, were followed before.
+- Don't retry a POST (GraphQL queries and mutations) when Octopus answers 503, so a mutation is never sent twice. POSTs are still retried when rate-limited.
+- Redact the API key and tokens from the details in GraphQL errors (`errorDescription`, refusal reasons), and keep redacting recent tokens after they are refreshed.
+- `octopus_rest_get` refuses paths that are still percent-encoded after decoding, such as `/%252e%252e/graphql/`.
+- Error on Octopus responses over 64 MiB instead of reading a truncated body.
+- Wait 30 seconds before sending a rejected API key to Octopus again.
+- Add read and idle timeouts to the HTTP server.
+- Build with Go 1.27 (`toolchain go1.27.2`), pin the Docker base images by digest, and run `govulncheck` in CI.
+
+### Fixed
+
+- Costs for long periods (up to the 732 days the consumption tools allow) no longer silently miss rates: rate history is fetched for the whole period, with an error asking for a shorter one if Octopus has more than expected.
+- The rate in force is found even when it started many records earlier, for tariffs whose rate records overlap.
+- `cost_if_run_now_gbp` in `octopus_find_cheapest_slots` prices the job over its whole duration from now, rather than at the current half-hour's rate.
+- The `healthcheck` command connects to `MCP_HTTP_HOST` when it is a specific address.
+
 ## [0.1.1] - 2026-10-16
 
 ### Security

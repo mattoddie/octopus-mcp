@@ -3,6 +3,7 @@ package octopus
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/url"
 	"sort"
 	"strings"
@@ -105,10 +106,13 @@ func (r Rate) Contains(t time.Time) bool {
 // Rates is a series sorted by start time.
 type Rates []Rate
 
-// At returns the rate in force at t.
+// At returns the rate in force at t: of the records whose period contains t,
+// the one that started most recently. Records can overlap (an open-ended rate
+// followed by newer ones, for example), so every record that started at or
+// before t is a candidate, however far back; usually the first one checked matches.
 func (rs Rates) At(t time.Time) (Rate, bool) {
 	i := sort.Search(len(rs), func(i int) bool { return rs[i].From.After(t) })
-	for j := i - 1; j >= 0 && j >= i-3; j-- { // overlapping records are rare; look back a little
+	for j := i - 1; j >= 0; j-- {
 		if rs[j].Contains(t) {
 			return rs[j], true
 		}
@@ -131,8 +135,24 @@ func FormatTime(t time.Time) string { return t.UTC().Format("2006-01-02T15:04:05
 // LocalTime formats a time in UK local time for output.
 func LocalTime(t time.Time) string { return t.In(London).Format(time.RFC3339) }
 
-// maxRateRecords bounds how much rate history one call fetches (about 13 months of half-hours).
-const maxRateRecords = 20000
+// maxRateRecords bounds how much rate history one call fetches when the period
+// is open-ended (about 13 months of half-hours) or very long.
+const (
+	maxRateRecords      = 20000
+	maxRateRecordsLimit = 150000
+)
+
+// rateRecordLimit sizes the cap on rate records to the period: at most one
+// record per half-hour, doubled because some tariffs publish separate direct
+// debit and non-direct-debit prices, plus some slack for records that overlap
+// the ends.
+func rateRecordLimit(from, to time.Time) int {
+	if from.IsZero() || to.IsZero() || !to.After(from) {
+		return maxRateRecords
+	}
+	halfHours := int(math.Ceil(to.Sub(from).Hours() * 2))
+	return min(max(2*halfHours+200, 1500), maxRateRecordsLimit)
+}
 
 // TariffRates fetches a tariff's unit rates ("standard-unit-rates", "day-unit-rates",
 // "night-unit-rates") or "standing-charges" overlapping [from, to). These endpoints are public.
@@ -145,9 +165,14 @@ func (c *Client) TariffRates(ctx context.Context, t Tariff, kind string, from, t
 	if !to.IsZero() {
 		q.Set("period_to", FormatTime(to))
 	}
-	page, err := c.GetPages(ctx, t.Path(kind), q, false, maxRateRecords)
+	limit := rateRecordLimit(from, to)
+	page, err := c.GetPages(ctx, t.Path(kind), q, false, limit)
 	if err != nil {
 		return nil, err
+	}
+	// Pricing with part of the history would silently miss or misprice periods.
+	if page.Truncated {
+		return nil, fmt.Errorf("%s has more than %d %s records for this period, more than octopus-mcp fetches at once; ask for a shorter period", t.Code, len(page.Results), strings.ReplaceAll(kind, "-", " "))
 	}
 	hasDD := false
 	for _, r := range page.Results {

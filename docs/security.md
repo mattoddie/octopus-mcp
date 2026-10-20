@@ -24,15 +24,15 @@ The best defence is to limit what's possible, not to rely on the model behaving.
 
 | Layer | Setting | What it does |
 |---|---|---|
-| Write switch | `OCTOPUS_ALLOW_WRITES` (off by default) | When off, no tools that change anything are registered, and the raw GraphQL tool refuses mutations. |
+| Write switch | `OCTOPUS_ALLOW_WRITES` (off by default) | When off, no tools that change anything are registered, and the raw GraphQL tool only sends documents whose every operation is a query. It reads documents with a GraphQL lexer that follows the specification (commas, a byte order mark and comments are ignored as GraphQL ignores them), and refuses anything it can't read. Subscriptions are always refused. |
 | Toolsets | `OCTOPUS_TOOLSETS` | Tools outside the listed toolsets don't exist. The model can't see or call them. |
-| Secret-handling mutations | Built in | The raw GraphQL tool always refuses `obtainKrakenToken` and any mutation that issues or changes tokens, API keys or passwords, even with writes on. |
+| Secret-handling operations | Built in | The raw GraphQL tool always refuses a document that names anything to do with tokens, API keys or passwords (such as `obtainKrakenToken` or `regenerateSecretKey`), whether writes are on or off. |
 | Tool annotations | Built in | Each tool is marked read-only or not. Bump charges and suspending smart charging are marked open-world because they affect a real car, so MCP clients can ask for your confirmation. |
 | Server instructions | Built in | With writes on, the model is told to confirm EV changes and joining Saving Sessions with you first. This helps, but it isn't a security boundary. |
-| No secret output | Built in | No tool returns the API key or a Kraken token. Error messages are scrubbed of both. Public tariff requests don't send the key at all. |
-| Redirect guard | Built in | Requests carrying the API key or token never follow a redirect to another host, and paged results are always fetched from the configured host. |
-| Endpoint auth | `MCP_AUTH_TOKEN` | Bearer token required on every request, checked in constant time. The http transport refuses to start without one. |
-| Host allow-list | `MCP_ALLOWED_HOSTS` | Rejects requests with an unexpected `Host` header. This blocks DNS-rebinding attacks from browser pages. |
+| No secret output | Built in | No tool returns the API key or a Kraken token. Error messages, including the details Octopus adds to GraphQL errors, are scrubbed of the key and of current and recent tokens. Public tariff requests don't send the key at all. |
+| No redirects, https only | Built in | Requests to Octopus never follow redirects, so the key and tokens only go to the configured URLs, and paged results are always fetched from the configured host. The API URLs must be `https://` (plain `http://` only for localhost) and can't contain a user name or password. A POST that Octopus answers with 503 isn't retried, so a mutation is never sent twice. |
+| Endpoint auth | `MCP_AUTH_TOKEN` | Bearer token required on every request, checked in constant time. The http transport refuses to start without one, or with one shorter than 16 characters. |
+| Host and Origin allow-list | `MCP_ALLOWED_HOSTS` | Rejects requests with an unexpected `Host` header, or with an `Origin` header (sent by browsers) that isn't on the list. This blocks DNS-rebinding and cross-site attacks from browser pages. Required when running without a token. `/mcp` only accepts `POST` with a JSON body of up to 4 MiB. |
 | Container | Built in | A distroless image with no shell, running as a non-root user with nothing to write. The default `compose.yaml` uses a read-only root filesystem, `cap_drop: [ALL]` and `no-new-privileges`. |
 
 ### Why the switch matters more than usual

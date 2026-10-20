@@ -3,9 +3,11 @@ package tools
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/mattoddie/octopus-mcp/internal/octopus"
 )
@@ -21,19 +23,37 @@ type restArgs struct {
 	Query map[string]string `json:"query,omitempty" jsonschema:"Query string parameters, for example {\"period_from\": \"2026-10-01T00:00Z\"}"`
 }
 
-var (
-	gqlCommentRe = regexp.MustCompile(`#[^\n]*`)
-	gqlStringRe  = regexp.MustCompile(`(?s)"""(.*?)"""|"(\\.|[^"\\])*"`)
-	gqlMutation  = regexp.MustCompile(`(?:^|[\s}])(mutation|subscription)\b`)
-	// Operations that hand out credentials are never allowed through the raw tool.
-	gqlSecrets = regexp.MustCompile(`(?i)\b\w*(token|secretkey|apikey|password)\w*\b`)
-)
+// gqlSecretName matches names of fields, arguments and types that issue or
+// reveal credentials, such as obtainKrakenToken, regenerateSecretKey or apiKey.
+var gqlSecretName = regexp.MustCompile(`(?i)token|secretkey|apikey|password`)
 
-// gqlOperationKind strips comments and strings and reports whether a document has a mutation or subscription.
-func gqlOperationKind(q string) (writes, secrets bool) {
-	clean := gqlStringRe.ReplaceAllString(gqlCommentRe.ReplaceAllString(q, ""), `""`)
-	writes = gqlMutation.MatchString(clean)
-	return writes, writes && gqlSecrets.MatchString(clean)
+// checkGraphQL decides whether octopus_graphql may send a document. It lexes the
+// document (refusing anything it can't lex) and looks at every operation:
+// subscriptions are never allowed, mutations only with writes, and no name in
+// the document may refer to tokens, API keys or passwords, whether or not
+// writes are on.
+func checkGraphQL(query string, allowWrites bool) error {
+	doc, err := gqlParse(query)
+	if err != nil {
+		return fmt.Errorf("could not read the GraphQL document (%v); only well-formed documents are sent", err)
+	}
+	if len(doc.Operations) == 0 {
+		return errors.New("the document has no query in it")
+	}
+	for _, name := range doc.Names {
+		if gqlSecretName.MatchString(strings.ReplaceAll(name, "_", "")) {
+			return errors.New("operations that issue, read or change tokens, API keys or passwords aren't allowed through this tool")
+		}
+	}
+	for _, op := range doc.Operations {
+		switch {
+		case op == "subscription":
+			return errors.New("subscriptions aren't supported by this tool")
+		case op != "query" && !allowWrites:
+			return errors.New("write access is disabled, so only queries are allowed. Set OCTOPUS_ALLOW_WRITES=true to allow mutations")
+		}
+	}
+	return nil
 }
 
 func registerRaw(c *Context) {
@@ -41,10 +61,11 @@ func registerRaw(c *Context) {
 
 	desc := "Run any query against Octopus's Kraken GraphQL API (or its backend API), for anything the other tools don't cover. The schema can be explored at https://api.octopus.energy/v1/graphql/. Most queries take accountNumber. "
 	if c.AllowWrites {
-		desc += "Mutations are allowed because writes are enabled (OCTOPUS_ALLOW_WRITES=true): confirm any change with the user first. Mutations that issue or change tokens, API keys or passwords are always refused."
+		desc += "Mutations are allowed because writes are enabled (OCTOPUS_ALLOW_WRITES=true): confirm any change with the user first. "
 	} else {
-		desc += "Only queries are allowed because writes are disabled (OCTOPUS_ALLOW_WRITES=false)."
+		desc += "Only queries are allowed because writes are disabled (OCTOPUS_ALLOW_WRITES=false). "
 	}
+	desc += "Subscriptions, and any operation that mentions tokens, API keys or passwords, are always refused."
 	add(c, Def{
 		Toolset: "raw", Name: "octopus_graphql", Title: "Raw GraphQL query",
 		Description: desc,
@@ -54,12 +75,8 @@ func registerRaw(c *Context) {
 		if strings.TrimSpace(a.Query) == "" {
 			return nil, errors.New("give a query")
 		}
-		writes, secrets := gqlOperationKind(a.Query)
-		switch {
-		case strings.Contains(a.Query, "obtainKrakenToken") || secrets:
-			return nil, errors.New("operations that issue or change tokens, API keys or passwords aren't allowed through this tool")
-		case writes && !c.AllowWrites:
-			return nil, errors.New("write access is disabled, so only queries are allowed. Set OCTOPUS_ALLOW_WRITES=true to allow mutations")
+		if err := checkGraphQL(a.Query, c.AllowWrites); err != nil {
+			return nil, err
 		}
 		var out any
 		var err error
@@ -87,7 +104,12 @@ func registerRaw(c *Context) {
 			return nil, errors.New("path is not validly percent-encoded")
 		}
 		p = strings.TrimPrefix(strings.TrimSpace(p), "/v1")
-		if !strings.HasPrefix(p, "/") || strings.Contains(p, "..") || strings.ContainsAny(p, "?#\\") || strings.Contains(p, "//") || strings.Contains(p, "/./") || strings.HasPrefix(p, "/graphql") {
+		// One round of decoding only: a '%' left over (from %25) would be decoded again
+		// by Octopus, turning %252e%252e into "..".
+		if strings.ContainsAny(p, "%") || strings.ContainsFunc(p, unicode.IsControl) {
+			return nil, errors.New("path must be percent-encoded at most once and must not contain '%' or control characters after decoding")
+		}
+		if !strings.HasPrefix(p, "/") || strings.Contains(p, "..") || strings.ContainsAny(p, "?#\\") || strings.Contains(p, "//") || strings.Contains(p, "/./") || strings.HasSuffix(p, "/.") || strings.HasPrefix(strings.ToLower(p), "/graphql") {
 			return nil, errors.New("path must start with /, must not contain '..', './' or '//' segments, must not include a query string (use query), and can't be the GraphQL endpoint (use octopus_graphql)")
 		}
 		q := url.Values{}

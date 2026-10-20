@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"regexp"
@@ -52,7 +53,12 @@ type HTTP struct {
 	Port         int
 	AuthToken    string
 	AllowedHosts []string
+	// AllowUnauthenticated serves /mcp without a bearer token (MCP_ALLOW_UNAUTHENTICATED).
+	AllowUnauthenticated bool
 }
+
+// MinAuthTokenLength is the shortest MCP_AUTH_TOKEN accepted.
+const MinAuthTokenLength = 16
 
 // Config is the whole configuration.
 type Config struct {
@@ -112,10 +118,24 @@ func checkURL(name, v string) (string, error) {
 	if err != nil || u.Host == "" {
 		return "", fmt.Errorf("%s is not a valid URL: %s", name, v)
 	}
-	if u.Scheme != "https" && u.Scheme != "http" {
-		return "", fmt.Errorf("%s must use https:// (or http://), got %s", name, v)
+	if u.User != nil {
+		return "", fmt.Errorf("%s must not contain a user name or password; the API key is set with OCTOPUS_API_KEY", name)
+	}
+	// The API key and tokens must not cross the internet in cleartext; plain
+	// http is only for a local mock or proxy.
+	if u.Scheme != "https" && !(u.Scheme == "http" && isLoopback(u.Hostname())) {
+		return "", fmt.Errorf("%s must use https:// (http:// is only allowed for localhost), got %s", name, v)
 	}
 	return strings.TrimRight(v, "/"), nil
+}
+
+// isLoopback reports whether a URL host name is localhost or a loopback address.
+func isLoopback(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // AccountRe matches an Octopus account number such as A-1234ABCD.
@@ -206,15 +226,53 @@ func Load(env Env) (*Config, error) {
 			h.AllowedHosts = append(h.AllowedHosts, strings.ToLower(host))
 		}
 	}
-	unauth, err := boolValue("MCP_ALLOW_UNAUTHENTICATED", get("MCP_ALLOW_UNAUTHENTICATED"), false)
-	if err != nil {
+	if h.AllowUnauthenticated, err = boolValue("MCP_ALLOW_UNAUTHENTICATED", get("MCP_ALLOW_UNAUTHENTICATED"), false); err != nil {
 		return nil, err
 	}
-	// An HTTP server without a token would hand every enabled tool to anyone who can reach the port.
-	if cfg.Transport == "http" && h.AuthToken == "" && !unauth {
-		return nil, errors.New("MCP_AUTH_TOKEN is required for the http transport (generate one with: openssl rand -hex 32); set MCP_ALLOW_UNAUTHENTICATED=true only behind something else that authenticates")
+	if firstErr != nil {
+		return nil, firstErr
 	}
-	return cfg, firstErr
+	if cfg.Transport == "http" {
+		switch {
+		// An HTTP server without a token would hand every enabled tool to anyone who can reach the port.
+		case h.AuthToken == "" && !h.AllowUnauthenticated:
+			return nil, errors.New("MCP_AUTH_TOKEN is required for the http transport (generate one with: openssl rand -hex 32); set MCP_ALLOW_UNAUTHENTICATED=true only behind something else that authenticates")
+		case h.AuthToken != "" && len(h.AuthToken) < MinAuthTokenLength:
+			return nil, fmt.Errorf("MCP_AUTH_TOKEN must be at least %d characters (generate one with: openssl rand -hex 32)", MinAuthTokenLength)
+		// Without a token, the Host and Origin checks are all that stop a web page
+		// from reaching the server through DNS rebinding.
+		case h.AuthToken == "" && len(h.AllowedHosts) == 0:
+			return nil, errors.New("MCP_ALLOW_UNAUTHENTICATED=true needs MCP_ALLOWED_HOSTS: without a token, the Host and Origin allow-list is what stops web pages reaching the server through DNS rebinding. List the host names clients use, such as octopus-mcp.example.com,localhost")
+		}
+	}
+	return cfg, nil
+}
+
+// HealthcheckURL is the /health URL the healthcheck command checks, or "" for stdio.
+// It connects to MCP_HTTP_HOST, or to loopback when the server listens on every address.
+func HealthcheckURL(env Env) (string, error) {
+	transport, err := read(env, "MCP_TRANSPORT")
+	if err != nil || transport == "stdio" {
+		return "", err
+	}
+	host, err := read(env, "MCP_HTTP_HOST")
+	if err != nil {
+		return "", err
+	}
+	switch host {
+	case "", "0.0.0.0", "::", "[::]":
+		host = "127.0.0.1"
+	}
+	host = strings.TrimSuffix(strings.TrimPrefix(host, "["), "]")
+	p, err := read(env, "MCP_HTTP_PORT")
+	if err != nil {
+		return "", err
+	}
+	port, err := positiveInt("MCP_HTTP_PORT", p, 8080)
+	if err != nil {
+		return "", err
+	}
+	return "http://" + net.JoinHostPort(host, strconv.Itoa(port)) + "/health", nil
 }
 
 func contains(list []string, s string) bool {

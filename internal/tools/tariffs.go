@@ -572,8 +572,8 @@ func registerTariffs(c *Context) {
 		overall /= float64(len(slots))
 		out["average_p_per_kwh_in_window"] = octopus.Round(overall, 2)
 		if a.KWh != nil && *a.KWh > 0 {
-			if r, ok := rs.At(now); ok {
-				out["cost_if_run_now_gbp"] = pounds(r.IncVAT * *a.KWh)
+			if avg, ok := averageRate(rs, now, now.Add(time.Duration(dur*float64(time.Hour)))); ok {
+				out["cost_if_run_now_gbp"] = pounds(avg * *a.KWh)
 			}
 		}
 		if want := limitArg(a.Slots, 6, 96); a.Slots == nil || *a.Slots > 0 {
@@ -609,4 +609,30 @@ func registerTariffs(c *Context) {
 		}
 		return Obj{"postcode": strings.ToUpper(strings.TrimSpace(a.Postcode)), "region": l, "region_name": octopus.Regions[l], "gsp_group": "_" + l}, nil
 	})
+}
+
+// averageRate is the time-weighted average unit rate (p/kWh) over [from, to),
+// assuming even use, or false if a price in that period isn't known. Rates
+// change on half-hour boundaries, so the period is priced half-hour by half-hour.
+func averageRate(rs octopus.Rates, from, to time.Time) (float64, bool) {
+	if !to.After(from) {
+		return 0, false
+	}
+	sum := 0.0
+	for t := from; t.Before(to); {
+		r, ok := rs.At(t)
+		if !ok {
+			return 0, false
+		}
+		end := halfHourFloor(t).Add(30 * time.Minute)
+		if end.After(to) {
+			end = to
+		}
+		if !r.To.IsZero() && r.To.Before(end) {
+			end = r.To
+		}
+		sum += r.IncVAT * end.Sub(t).Hours()
+		t = end
+	}
+	return sum / to.Sub(from).Hours(), true
 }

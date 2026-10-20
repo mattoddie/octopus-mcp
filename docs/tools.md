@@ -367,7 +367,7 @@ Raw API escape hatches for anything the other tools don't cover: GraphQL queries
 
 🟢 read · destructive
 
-Run any query against Octopus's Kraken GraphQL API (or its backend API), for anything the other tools don't cover. The schema can be explored at https://api.octopus.energy/v1/graphql/. Most queries take accountNumber. Mutations are allowed because writes are enabled (OCTOPUS_ALLOW_WRITES=true): confirm any change with the user first. Mutations that issue or change tokens, API keys or passwords are always refused.
+Run any query against Octopus's Kraken GraphQL API (or its backend API), for anything the other tools don't cover. The schema can be explored at https://api.octopus.energy/v1/graphql/. Most queries take accountNumber. Mutations are allowed because writes are enabled (OCTOPUS_ALLOW_WRITES=true): confirm any change with the user first. Subscriptions, and any operation that mentions tokens, API keys or passwords, are always refused.
 
 | Argument | Type | Required | Description |
 |---|---|---|---|

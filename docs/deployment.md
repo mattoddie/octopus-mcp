@@ -48,7 +48,7 @@ The image's entrypoint is the `octopus-mcp` binary, so you can run any of its co
 |---|---|
 | `serve` (the default) | Serves MCP over stdio, or Streamable HTTP when `MCP_TRANSPORT=http` |
 | `status` | Checks the API key by getting a Kraken token, and prints the accounts it can see as JSON. Never prints the key or token. |
-| `healthcheck` | Exits with `0` if the HTTP server answers `/health`. Used by the image's `HEALTHCHECK`. |
+| `healthcheck` | Exits with `0` if the HTTP server answers `/health` on `MCP_HTTP_HOST` (or `127.0.0.1` when it listens on every address) and `MCP_HTTP_PORT`. Used by the image's `HEALTHCHECK`. |
 | `version` | Prints the version |
 
 ## Image tags

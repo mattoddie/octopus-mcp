@@ -19,7 +19,7 @@ The server checks the configuration at startup. If something is wrong, it exits 
 | `OCTOPUS_API_KEY` | **required** | Your personal API key, from **[Personal details → API access](https://octopus.energy/dashboard/new/accounts/personal-details/api-access)** in your Octopus account. It starts `sk_live_`. |
 | `OCTOPUS_ACCOUNT` | the only account the key can see | Your account number, like `A-1234ABCD`. If the key can see more than one account, set this, or pass `account_number` to the tools. |
 | `OCTOPUS_TIMEOUT_MS` | `30000` | Timeout for each request to Octopus, in milliseconds. |
-| `OCTOPUS_API_URL` | `https://api.octopus.energy` | The REST API, without `/v1`. You shouldn't need to change it. |
+| `OCTOPUS_API_URL` | `https://api.octopus.energy` | The REST API, without `/v1`. You shouldn't need to change it. The API URLs must use `https://` (plain `http://` is only accepted for `localhost` and loopback addresses) and can't include a user name or password. |
 | `OCTOPUS_GRAPHQL_URL` | `$OCTOPUS_API_URL/v1/graphql/` | The Kraken GraphQL API. |
 | `OCTOPUS_BACKEND_GRAPHQL_URL` | `https://api.backend.octopus.energy/v1/graphql/` | Octopus Energy's own GraphQL API, which serves Saving Sessions. |
 
@@ -64,11 +64,11 @@ After changing these settings, restart the container (`docker compose up -d`) an
 | Variable | Default | Description |
 |---|---|---|
 | `MCP_TRANSPORT` | `http` in the Docker image (`stdio` for the binary) | `http` for Streamable HTTP, or `stdio`. |
-| `MCP_HTTP_HOST` | `127.0.0.1` (`0.0.0.0` in the Docker image) | Address to listen on (HTTP only). |
+| `MCP_HTTP_HOST` | `127.0.0.1` (`0.0.0.0` in the Docker image) | Address to listen on (HTTP only). The `healthcheck` command connects to this address, or to `127.0.0.1` when it is `0.0.0.0` or `::`. |
 | `MCP_HTTP_PORT` | `8080` | Port to listen on (HTTP only). |
-| `MCP_AUTH_TOKEN` | (required for http) | Every request to `/mcp` must send `Authorization: Bearer <token>`. The server refuses to start in http mode without it. Generate one with `openssl rand -hex 32`. |
-| `MCP_ALLOW_UNAUTHENTICATED` | `false` | Start the http transport without `MCP_AUTH_TOKEN`. Only for a server that sits behind something else that authenticates every request. |
-| `MCP_ALLOWED_HOSTS` | | Comma-separated allow-list of `Host` header values, such as `octopus-mcp.lan,octopus-mcp.lan:8080`. Requests with any other `Host` are rejected, which protects against DNS-rebinding attacks from web pages in your browser. |
+| `MCP_AUTH_TOKEN` | (required for http) | Every request to `/mcp` must send `Authorization: Bearer <token>`. The server refuses to start in http mode without it, or if it is shorter than 16 characters. Generate one with `openssl rand -hex 32`. |
+| `MCP_ALLOW_UNAUTHENTICATED` | `false` | Start the http transport without `MCP_AUTH_TOKEN`. Only for a server that sits behind something else that authenticates every request. It also needs `MCP_ALLOWED_HOSTS`, because without a token the allow-list is what stops web pages reaching the server through DNS rebinding, and the server logs a warning at startup. |
+| `MCP_ALLOWED_HOSTS` | | Comma-separated allow-list of hosts, such as `octopus-mcp.lan,localhost`. Requests with any other `Host` header are rejected, and so are requests with an `Origin` header (which browsers send) that isn't on the list, including an empty or `null` one. This protects against DNS-rebinding and cross-site attacks from web pages in your browser. An entry without a port matches a `Host` on any port, but an `Origin` only on the default port (80 for `http://`, 443 for `https://`); to allow a page served on another port, list `host:port`, such as `localhost:3000`. |
 
 The HTTP server exposes these endpoints:
 

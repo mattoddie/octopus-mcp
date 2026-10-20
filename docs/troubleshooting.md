@@ -24,7 +24,10 @@ Run `docker compose logs octopus-mcp`. The last line names the problem, for exam
 | `OCTOPUS_ALLOW_WRITES must be true or false, got "…"` | Fix the value. Booleans accept `true`/`false`, `1`/`0`, `yes`/`no` and `on`/`off`. |
 | `unknown toolset "x" in OCTOPUS_TOOLSETS; valid: …` | Fix the typo. The message lists the valid names. |
 | `MCP_TRANSPORT must be stdio or http, got "…"` | Fix the value. |
-| `OCTOPUS_API_URL must use https:// (or http://), got …` | Include the scheme, or remove the variable to use the default. |
+| `OCTOPUS_API_URL must use https:// (http:// is only allowed for localhost), got …` | Use an `https://` URL, or remove the variable to use the default. The same applies to `OCTOPUS_GRAPHQL_URL` and `OCTOPUS_BACKEND_GRAPHQL_URL`. |
+| `… must not contain a user name or password` | Remove `user:password@` from the URL. The API key goes in `OCTOPUS_API_KEY`. |
+| `MCP_AUTH_TOKEN must be at least 16 characters` | Use a longer token, for example from `openssl rand -hex 32`. |
+| `MCP_ALLOW_UNAUTHENTICATED=true needs MCP_ALLOWED_HOSTS` | Set `MCP_ALLOWED_HOSTS` to the host names clients use, or set `MCP_AUTH_TOKEN` instead. |
 | `MCP_HTTP_PORT must be a positive integer, got "…"` | Fix the value. The same applies to `OCTOPUS_TIMEOUT_MS`. |
 | `could not read OCTOPUS_API_KEY_FILE (…)` | The secret file isn't mounted where the variable points. |
 
@@ -34,8 +37,8 @@ Run `docker compose logs octopus-mcp`. The last line names the problem, for exam
 2. **Right host?** The port is published on the machine running Docker. If Docker runs on another machine (for example with `DOCKER_HOST`), `localhost` won't work.
 3. **Right path?** The endpoint is `/mcp`, so the URL is `http://<docker-host>:8080/mcp`.
 4. **`401 Unauthorized`:** the client isn't sending `Authorization: Bearer <MCP_AUTH_TOKEN>`, or the token doesn't match. Watch for stray quotes or spaces in `.env`.
-5. **`403 Host … is not allowed`:** add the hostname the client uses to `MCP_ALLOWED_HOSTS`, or unset it.
-6. **The client expects SSE:** the server is stateless and answers `POST` requests with JSON. Make sure the client is set to *Streamable HTTP* (often called `http`), not `sse`.
+5. **`403 Host … is not allowed` or `403 Origin … is not allowed`:** add the hostname the client uses to `MCP_ALLOWED_HOSTS`, or unset it. A browser-based client sends an `Origin`; if its page is on a port other than 80 or 443, list it as `host:port`.
+6. **The client expects SSE, or gets `405 Method not allowed`:** the server is stateless and only answers `POST` requests, with JSON. Make sure the client is set to *Streamable HTTP* (often called `http`), not `sse`.
 7. **stdio clients show nothing:** check that the command has `-i` and not `-t`, and that `MCP_TRANSPORT=stdio` is set when using the image, which defaults to HTTP.
 
 ## API key and account errors

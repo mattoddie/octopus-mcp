@@ -49,7 +49,7 @@ These show the kind of back-and-forth to expect. Your assistant's wording will d
 
 > **You:** *I need to run the washing machine and the dishwasher, about 2 hours and 2.5 kWh in total. When's cheapest before 7am?*
 >
-> **Assistant:** *The cheapest two hours are 02:00 to 04:00, averaging 8.4p/kWh, so about 21p for both loads. Running them now (19:30, 31.2p/kWh) would cost about 78p. The next best windows are 00:30 to 02:30 (9.1p) and 04:00 to 06:00 (10.3p). Prices from 05:30 are rising as the morning peak starts.*
+> **Assistant:** *The cheapest two hours are 02:00 to 04:00, averaging 8.4p/kWh, so about 21p for both loads. Starting them now (19:30) would run through the evening peak at an average of 31.2p/kWh, about 78p. The next best windows are 00:30 to 02:30 (9.1p) and 04:00 to 06:00 (10.3p). Prices from 05:30 are rising as the morning peak starts.*
 
 Behind the scenes the assistant used `octopus_get_account` to find your Agile tariff and region, then `octopus_find_cheapest_slots` with `duration_hours: 2`, `kwh: 2.5` and `to: "tomorrow 07:00"`. The `plan_cheap_usage` prompt asks for exactly this flow.
 

@@ -2,6 +2,7 @@ package tools
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -152,7 +153,8 @@ func TestFindCheapestSlots(t *testing.T) {
 	if len(slots) != 3 || num(get(slots[0], "p_per_kwh")) != 10 || num(get(slots[1], "p_per_kwh")) != -2 {
 		t.Errorf("cheapest half-hours (in time order): %v", slots)
 	}
-	if num(res["cost_if_run_now_gbp"]) != 0.6 || res["prices_known_until"] != "2026-10-15T17:00:00+01:00" {
+	// Running now covers the next two half-hours, at 30p and 25p.
+	if num(res["cost_if_run_now_gbp"]) != 0.55 || res["prices_known_until"] != "2026-10-15T17:00:00+01:00" {
 		t.Errorf("comparison: %v", res)
 	}
 	if msg := env.callErr("octopus_find_cheapest_slots", map[string]any{"tariff_code": "E-1R-AGILE-24-10-01-C", "duration_hours": 5}); !strings.Contains(msg, "fewer than") {
@@ -197,5 +199,31 @@ func TestTariffParsing(t *testing.T) {
 	}
 	if _, err := octopus.ParseTariff("E-1R-AGILE-24-10-01-Z"); err == nil {
 		t.Error("region Z accepted")
+	}
+}
+
+func TestAverageRate(t *testing.T) {
+	base := time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC)
+	var rs octopus.Rates
+	for i, p := range []float64{30, 20, 10, 40} {
+		s := base.Add(time.Duration(i) * 30 * time.Minute)
+		rs = append(rs, octopus.Rate{From: s, To: s.Add(30 * time.Minute), IncVAT: p})
+	}
+	for _, c := range []struct {
+		from time.Time
+		dur  time.Duration
+		want float64
+		ok   bool
+	}{
+		{base, time.Hour, 25, true},
+		{base.Add(15 * time.Minute), time.Hour, 20, true}, // 15 min at 30, 30 at 20, 15 at 10
+		{base, 2 * time.Hour, 25, true},
+		{base.Add(time.Hour), 90 * time.Minute, 0, false}, // runs past the known prices
+		{base.Add(-time.Minute), time.Hour, 0, false},
+	} {
+		got, ok := averageRate(rs, c.from, c.from.Add(c.dur))
+		if ok != c.ok || math.Abs(got-c.want) > 1e-9 {
+			t.Errorf("%s for %s: %v %v, want %v %v", c.from, c.dur, got, ok, c.want, c.ok)
+		}
 	}
 }

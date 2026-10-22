@@ -6,6 +6,8 @@ For octopus-mcp, the "public API" is the set of tool names, their arguments, the
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-22
+
 ### Added
 
 - **Claude Desktop extension bundles.** Each release now has a `.mcpb` bundle for macOS, Windows and Linux on `amd64` and `arm64`, which installs octopus-mcp into Claude Desktop in one click, with a settings form for the API key, account, writes, toolsets and audit log. No Docker or token needed. See [Claude Desktop](docs/clients.md#claude-desktop).
@@ -86,7 +88,8 @@ First release, not yet tagged. It hasn't yet been tested against a live Octopus 
 - Multi-arch distroless Docker image (`linux/amd64`, `linux/arm64`) published to GHCR on each release, with SBOM and provenance attestation.
 - Documentation, including a tool reference generated from the code, and a website.
 
-[Unreleased]: https://github.com/mattoddie/octopus-mcp/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/mattoddie/octopus-mcp/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/mattoddie/octopus-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mattoddie/octopus-mcp/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/mattoddie/octopus-mcp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/mattoddie/octopus-mcp/releases/tag/v0.1.0

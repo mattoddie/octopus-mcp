@@ -78,6 +78,8 @@ Now ask *"What tariff am I on, and what's my electricity price right now?"* in C
 
 Using **VS Code, Cursor or Codex**? See [Connecting MCP clients](docs/clients.md). Prefer not to run a service? Use [stdio mode](docs/clients.md#stdio-mode) with `docker run -i` or the local binary.
 
+octopus-mcp is listed in the [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.mattoddie/octopus-mcp) as `io.github.mattoddie/octopus-mcp`, so clients that install from the registry can find it there, with the Docker image and the bundles.
+
 ## Turning on changes
 
 Out of the box the assistant can look but not touch. To let it change Intelligent Octopus charging settings, start a bump charge and join Saving Sessions, add this to `.env` and restart:

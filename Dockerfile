@@ -24,7 +24,8 @@ LABEL org.opencontainers.image.title="octopus-mcp" \
       org.opencontainers.image.description="MCP server for Octopus Energy (unofficial)" \
       org.opencontainers.image.source="https://github.com/mattoddie/octopus-mcp" \
       org.opencontainers.image.documentation="https://octopus-mcp.mattoddie.dev/docs/" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="MIT" \
+      io.modelcontextprotocol.server.name="io.github.mattoddie/octopus-mcp"
 COPY --from=build /out/octopus-mcp /octopus-mcp
 # The server keeps no state: the API key comes from the environment and Kraken
 # tokens live in memory, so there is no volume.

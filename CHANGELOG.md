@@ -6,6 +6,10 @@ For octopus-mcp, the "public API" is the set of tool names, their arguments, the
 
 ## [Unreleased]
 
+### Added
+
+- **Listed in the MCP Registry** as `io.github.mattoddie/octopus-mcp`. Each stable release is published to the [official MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.mattoddie/octopus-mcp) with the Docker image (run over stdio) and the extension bundles, so clients that install from the registry can find it. See [Releasing](docs/releasing.md#the-mcp-registry).
+
 ## [0.3.0] - 2026-10-22
 
 ### Added

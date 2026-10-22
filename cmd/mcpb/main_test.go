@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -135,5 +136,175 @@ func TestObjectRoundTrip(t *testing.T) {
 		if _, err := parseObject([]byte(bad)); err == nil {
 			t.Errorf("%s was accepted", bad)
 		}
+	}
+}
+
+// server.json (the MCP Registry entry) must describe the same server as the
+// manifest: the same settings, as environment variables for the Docker image,
+// and one bundle for each platform `make mcpb` builds.
+func TestServerJSONMatchesManifest(t *testing.T) {
+	data, err := os.ReadFile("../../server.json")
+	if os.IsNotExist(err) {
+		t.Skip("server.json is not available")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	type envVar struct {
+		Name       string  `json:"name"`
+		Value      *string `json:"value"`
+		Default    *string `json:"default"`
+		Format     string  `json:"format"`
+		IsRequired bool    `json:"isRequired"`
+		IsSecret   bool    `json:"isSecret"`
+	}
+	var server struct {
+		Name       string `json:"name"`
+		Version    string `json:"version"`
+		WebsiteURL string `json:"websiteUrl"`
+		Repository struct {
+			URL string `json:"url"`
+		} `json:"repository"`
+		Packages []struct {
+			RegistryType string   `json:"registryType"`
+			Identifier   string   `json:"identifier"`
+			Env          []envVar `json:"environmentVariables"`
+		} `json:"packages"`
+	}
+	if err := json.Unmarshal(data, &server); err != nil {
+		t.Fatalf("server.json: %v", err)
+	}
+
+	raw, err := readManifest(t).MarshalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest struct {
+		Name       string `json:"name"`
+		Version    string `json:"version"`
+		Homepage   string `json:"homepage"`
+		Repository struct {
+			URL string `json:"url"`
+		} `json:"repository"`
+		UserConfig map[string]struct {
+			Type      string `json:"type"`
+			Default   any    `json:"default"`
+			Required  bool   `json:"required"`
+			Sensitive bool   `json:"sensitive"`
+		} `json:"user_config"`
+		Server struct {
+			MCPConfig struct {
+				Env map[string]string `json:"env"`
+			} `json:"mcp_config"`
+		} `json:"server"`
+	}
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		t.Fatal(err)
+	}
+
+	if want := "io.github.mattoddie/" + manifest.Name; server.Name != want {
+		t.Errorf("name %q, want %q", server.Name, want)
+	}
+	if server.Version != manifest.Version {
+		t.Errorf("version %q, want the manifest's %q (the release job stamps the real one)", server.Version, manifest.Version)
+	}
+	if server.Repository.URL != manifest.Repository.URL {
+		t.Errorf("repository %q, want %q", server.Repository.URL, manifest.Repository.URL)
+	}
+	if server.WebsiteURL != manifest.Homepage {
+		t.Errorf("websiteUrl %q, want %q", server.WebsiteURL, manifest.Homepage)
+	}
+
+	docs, err := os.ReadFile("../../docs/configuration.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	makefile, err := os.ReadFile("../../Makefile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var platforms []string
+	for _, line := range strings.Split(string(makefile), "\n") {
+		if rest, ok := strings.CutPrefix(line, "MCPB_PLATFORMS :="); ok {
+			for _, p := range strings.Fields(rest) {
+				platforms = append(platforms, strings.ReplaceAll(p, "/", "-"))
+			}
+		}
+	}
+	if len(platforms) == 0 {
+		t.Fatal("MCPB_PLATFORMS not found in the Makefile")
+	}
+
+	var oci, bundles []string
+	for _, p := range server.Packages {
+		switch p.RegistryType {
+		case "oci":
+			oci = append(oci, p.Identifier)
+			if want := "ghcr.io/mattoddie/" + manifest.Name + ":" + server.Version; p.Identifier != want {
+				t.Errorf("image %q, want %q", p.Identifier, want)
+			}
+			seen := map[string]bool{}
+			for _, v := range p.Env {
+				seen[v.Name] = true
+				if !strings.Contains(string(docs), "`"+v.Name+"`") {
+					t.Errorf("%s isn't documented in docs/configuration.md", v.Name)
+				}
+				ref, ok := manifest.Server.MCPConfig.Env[v.Name]
+				if !ok {
+					t.Errorf("%s is in server.json but not in the manifest's env", v.Name)
+					continue
+				}
+				m := userConfigRef.FindStringSubmatch(ref)
+				if m == nil {
+					// A fixed value, like MCP_TRANSPORT=stdio.
+					if v.Value == nil || *v.Value != ref {
+						t.Errorf("%s: want the fixed value %q, as in the manifest", v.Name, ref)
+					}
+					continue
+				}
+				if v.Value != nil {
+					t.Errorf("%s has a fixed value, but the manifest lets the user set it", v.Name)
+				}
+				setting, ok := manifest.UserConfig[m[1]]
+				if !ok {
+					t.Errorf("%s: user_config.%s is missing", v.Name, m[1])
+					continue
+				}
+				if v.IsRequired != setting.Required || v.IsSecret != setting.Sensitive {
+					t.Errorf("%s: isRequired %v, isSecret %v; the manifest says required %v, sensitive %v",
+						v.Name, v.IsRequired, v.IsSecret, setting.Required, setting.Sensitive)
+				}
+				if (v.Format == "boolean") != (setting.Type == "boolean") {
+					t.Errorf("%s: format %q, but the setting is a %s", v.Name, v.Format, setting.Type)
+				}
+				want := fmt.Sprint(setting.Default)
+				if setting.Default == nil || want == "" {
+					if v.Default != nil {
+						t.Errorf("%s: default %q, but the manifest has none", v.Name, *v.Default)
+					}
+				} else if v.Default == nil || *v.Default != want {
+					t.Errorf("%s: want default %q, as in the manifest", v.Name, want)
+				}
+			}
+			for name := range manifest.Server.MCPConfig.Env {
+				if !seen[name] {
+					t.Errorf("%s is in the manifest's env but not in server.json", name)
+				}
+			}
+		case "mcpb":
+			bundles = append(bundles, p.Identifier)
+		default:
+			t.Errorf("unexpected package type %q", p.RegistryType)
+		}
+	}
+	if len(oci) != 1 {
+		t.Errorf("want one OCI package, got %v", oci)
+	}
+	var want []string
+	for _, p := range platforms {
+		want = append(want, "https://github.com/mattoddie/"+manifest.Name+"/releases/download/v"+server.Version+"/"+manifest.Name+"-"+server.Version+"-"+p+".mcpb")
+	}
+	if !reflect.DeepEqual(bundles, want) {
+		t.Errorf("bundles:\n%s\nwant one for each of MCPB_PLATFORMS:\n%s", strings.Join(bundles, "\n"), strings.Join(want, "\n"))
 	}
 }

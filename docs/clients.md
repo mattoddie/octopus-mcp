@@ -186,6 +186,8 @@ Then `export OCTOPUS_MCP_TOKEN=<token>` before running `codex`.
 
 ## Other clients
 
+Clients that install servers from the [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.mattoddie/octopus-mcp) can find octopus-mcp there as `io.github.mattoddie/octopus-mcp`. The entry offers the Docker image in [stdio mode](#stdio-mode) and the extension bundles, and lists the same settings as the [configuration](configuration.md) variables.
+
 Any client that supports MCP **Streamable HTTP** works. Point it at `http://<docker-host>:8080/mcp` and send the bearer token header.
 
 If your client only supports stdio, you have two options. You can use [stdio mode](#stdio-mode), or you can keep the shared HTTP server and connect through a stdio-to-HTTP bridge such as [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):

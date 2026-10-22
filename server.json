@@ -1,0 +1,100 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.mattoddie/octopus-mcp",
+  "title": "Octopus Energy (octopus-mcp)",
+  "description": "Octopus Energy usage and costs, tariffs, Agile prices, bills, EV charging and Saving Sessions",
+  "repository": {
+    "url": "https://github.com/mattoddie/octopus-mcp",
+    "source": "github"
+  },
+  "websiteUrl": "https://octopus-mcp.mattoddie.dev",
+  "version": "0.0.0-dev",
+  "packages": [
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/mattoddie/octopus-mcp:0.0.0-dev",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "MCP_TRANSPORT",
+          "description": "The image serves HTTP by default; this runs it over stdio.",
+          "value": "stdio"
+        },
+        {
+          "name": "OCTOPUS_API_KEY",
+          "description": "Your Octopus API key, from Personal details → API access in your Octopus account. It starts sk_live_.",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "OCTOPUS_ACCOUNT",
+          "description": "Your account number, like A-1234ABCD. Optional when the key can see only one account."
+        },
+        {
+          "name": "OCTOPUS_ALLOW_WRITES",
+          "description": "true lets the assistant change Intelligent Octopus charging and join Saving Sessions. false is read-only.",
+          "format": "boolean",
+          "default": "false"
+        },
+        {
+          "name": "OCTOPUS_TOOLSETS",
+          "description": "Comma-separated toolsets to expose: account, consumption, tariffs, intelligent, octoplus, raw. Empty means all."
+        },
+        {
+          "name": "OCTOPUS_AUDIT_LOG",
+          "description": "stderr, or a file path, to record every change the assistant makes as a JSON line. A file needs a volume."
+        }
+      ]
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/mattoddie/octopus-mcp/releases/download/v0.0.0-dev/octopus-mcp-0.0.0-dev-darwin-arm64.mcpb",
+      "fileSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/mattoddie/octopus-mcp/releases/download/v0.0.0-dev/octopus-mcp-0.0.0-dev-darwin-amd64.mcpb",
+      "fileSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/mattoddie/octopus-mcp/releases/download/v0.0.0-dev/octopus-mcp-0.0.0-dev-windows-amd64.mcpb",
+      "fileSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/mattoddie/octopus-mcp/releases/download/v0.0.0-dev/octopus-mcp-0.0.0-dev-windows-arm64.mcpb",
+      "fileSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/mattoddie/octopus-mcp/releases/download/v0.0.0-dev/octopus-mcp-0.0.0-dev-linux-amd64.mcpb",
+      "fileSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/mattoddie/octopus-mcp/releases/download/v0.0.0-dev/octopus-mcp-0.0.0-dev-linux-arm64.mcpb",
+      "fileSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 # Publishing a GitHub release (tag vX.Y.Z) builds the Docker image for
 # amd64 and arm64 and pushes it to ghcr.io/<owner>/octopus-mcp, then builds
 # the MCP Bundles (.mcpb) for Claude Desktop and attaches them to the release.
+# Stable releases are then published to the official MCP Registry.
 # See docs/releasing.md.
 name: Release
 
@@ -23,6 +24,9 @@ jobs:
       packages: write # push to ghcr.io
       id-token: write # sign the build provenance attestation
       attestations: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      stable: ${{ steps.version.outputs.stable }}
     env:
       IMAGE: ghcr.io/${{ github.repository }}
       TAG: ${{ github.event.release.tag_name }}
@@ -198,3 +202,51 @@ jobs:
             echo "| Linux | \`octopus-mcp-$version-linux-amd64.mcpb\`, \`octopus-mcp-$version-linux-arm64.mcpb\` |"
           } >> notes.md
           gh release edit "$TAG" --notes-file notes.md
+
+  registry:
+    name: Publish to the MCP Registry
+    # After the image and the bundles: the registry checks the image's
+    # io.modelcontextprotocol.server.name label and that each bundle downloads.
+    # Stable releases only, so a pre-release never becomes the listed version.
+    needs: [image, mcpb]
+    if: needs.image.outputs.stable == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # download the bundles from the release
+      id-token: write # log in to the MCP Registry with GitHub OIDC
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+      VERSION: ${{ needs.image.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Stamp server.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Hash the bundles as they were published, not a rebuild.
+          gh release download "$TAG" --pattern '*.mcpb' --dir dist
+          make server-json VERSION="$VERSION"
+          cat dist/server.json
+
+      - name: Install mcp-publisher
+        # The version and the SHA-256 of each archive are pinned in the Makefile.
+        run: make mcp-publisher
+
+      - name: Validate
+        run: make registry-validate SERVER_JSON=dist/server.json
+
+      - name: Publish
+        run: |
+          # A version can be published only once, so a re-run after a
+          # successful publish has nothing to do.
+          name=$(jq -r .name dist/server.json)
+          if curl -fs -o /dev/null "https://registry.modelcontextprotocol.io/v0/servers/$(jq -rn --arg n "$name" '$n|@uri')/versions/$VERSION"; then
+            echo "$name $VERSION is already in the MCP Registry."
+            exit 0
+          fi
+          make registry-publish REGISTRY_LOGIN=github-oidc SERVER_JSON=dist/server.json
+          echo "### Published \`$name\` $VERSION to the [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=$name)" >> "$GITHUB_STEP_SUMMARY"

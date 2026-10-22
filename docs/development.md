@@ -31,6 +31,8 @@ make test           # runs all tests against a mock Octopus API
 | `make docs-check` | Fail if `docs/tools.md` or the manifest is out of date (CI runs this) |
 | `make image` | Build the Docker image as `octopus-mcp:$(VERSION)` |
 | `make mcpb` | Build the Claude Desktop bundles, one per OS and architecture, in `dist/`. See [Releasing](releasing.md#about-the-bundles). |
+| `make server-json` | After `make mcpb`, write `dist/server.json`: the [MCP Registry](releasing.md#the-mcp-registry) entry with `VERSION` and the bundles' SHA-256s |
+| `make registry-validate` | Check `server.json` (or `SERVER_JSON=dist/server.json`) with the registry's validator, using the pinned `mcp-publisher` |
 
 The project deliberately has only two direct dependencies: the official MCP Go SDK, [`github.com/modelcontextprotocol/go-sdk`](https://github.com/modelcontextprotocol/go-sdk), and [`github.com/google/jsonschema-go`](https://github.com/google/jsonschema-go), which the SDK uses for input schemas. Everything else, including the GraphQL client, is the standard library. Please discuss before adding a dependency.
 

@@ -56,6 +56,22 @@ func checkGraphQL(query string, allowWrites bool) error {
 	return nil
 }
 
+// mayWrite reports whether a GraphQL document could change something: it has
+// an operation other than a query, or can't be read (and is then refused, which
+// the audit log should still show).
+func mayWrite(query string) bool {
+	doc, err := gqlParse(query)
+	if err != nil {
+		return true
+	}
+	for _, op := range doc.Operations {
+		if op != "query" {
+			return true
+		}
+	}
+	return false
+}
+
 func registerRaw(c *Context) {
 	cl := c.Client
 
@@ -71,6 +87,7 @@ func registerRaw(c *Context) {
 		Description: desc,
 		ReadOnly:    boolPtr(!c.AllowWrites), Destructive: boolPtr(c.AllowWrites), OpenWorld: c.AllowWrites,
 		Enums: map[string][]string{"endpoint": {"kraken", "backend"}},
+		Audit: func(args any) bool { return c.AllowWrites && mayWrite(args.(graphqlArgs).Query) },
 	}, func(ctx context.Context, a graphqlArgs) (any, error) {
 		if strings.TrimSpace(a.Query) == "" {
 			return nil, errors.New("give a query")

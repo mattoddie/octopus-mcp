@@ -29,7 +29,7 @@ func instructions(opts config.Tools) string {
 // registered, when non-nil, is filled with each tool's toolset and gate.
 func NewServer(client *octopus.Client, opts config.Tools, registered map[string]Info) *mcp.Server {
 	s := mcp.NewServer(&mcp.Implementation{Name: Name, Version: Version}, &mcp.ServerOptions{Instructions: instructions(opts)})
-	c := &Context{Server: s, Client: client, Tools: opts, Registered: registered}
+	c := &Context{Server: s, Client: client, Tools: opts, Registered: registered, audit: newAuditLog(opts.AuditLog)}
 	registerAccount(c)
 	registerConsumption(c)
 	registerTariffs(c)

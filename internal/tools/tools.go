@@ -35,6 +35,8 @@ type Context struct {
 	config.Tools
 	// Registered records each registered tool's toolset and gate, for the docs generator.
 	Registered map[string]Info
+	// audit is the audit log, or nil when OCTOPUS_AUDIT_LOG is unset.
+	audit *auditLog
 }
 
 // Info describes a registered tool.
@@ -59,6 +61,10 @@ type Def struct {
 	OpenWorld bool
 	// Enums restricts string arguments to fixed values, keyed by argument name.
 	Enums map[string][]string
+	// Audit decides whether a call goes in the audit log (OCTOPUS_AUDIT_LOG), for a
+	// tool whose arguments decide whether it changes anything. When nil, every call
+	// of a Write tool is logged and calls of Read tools are not.
+	Audit func(args any) bool
 }
 
 func boolPtr(b bool) *bool { return &b }
@@ -140,8 +146,15 @@ func add[In any](c *Context, d Def, h func(ctx context.Context, in In) (any, err
 		}
 	}
 	tool := &mcp.Tool{Name: d.Name, Title: d.Title, Description: d.Description, Annotations: ann, InputSchema: schemaFor[In](d)}
+	logged := d.Audit
+	if logged == nil && d.Gate == Write {
+		logged = func(any) bool { return true }
+	}
 	mcp.AddTool(c.Server, tool, func(ctx context.Context, _ *mcp.CallToolRequest, in In) (*mcp.CallToolResult, any, error) {
 		out, err := h(ctx, in)
+		if c.audit != nil && logged != nil && logged(in) {
+			c.audit.record(d.Name, in, err)
+		}
 		if err != nil {
 			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "Error: " + err.Error()}}, IsError: true}, nil, nil
 		}

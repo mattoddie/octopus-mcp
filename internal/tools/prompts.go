@@ -92,6 +92,15 @@ Report the sessions in UK time with what's at stake, plus practical tips for tha
 	},
 }
 
+// PromptNames lists the prompts in the order they are defined, for the MCP Bundle manifest.
+func PromptNames() []string {
+	names := make([]string, len(prompts))
+	for i, p := range prompts {
+		names[i] = p.name
+	}
+	return names
+}
+
 func registerPrompts(s *mcp.Server) {
 	for _, p := range prompts {
 		p := p

@@ -18,6 +18,8 @@ This guide takes you from nothing to asking your first question about your Octop
 
 You don't need an account at all for the public tariff tools (products, prices and Agile rates), but the server still needs an API key to start.
 
+> **Using Claude Desktop on a Mac or Windows PC?** You don't need Docker. Do step 1, then install the [extension bundle](clients.md#claude-desktop) from the releases page and enter your API key in its settings, instead of steps 2 to 4.
+
 ## 1. Get your API key
 
 Octopus gives every customer a personal API key.
@@ -115,6 +117,6 @@ If something goes wrong, the tool's error message usually says what to fix. [Tro
 ## Next steps
 
 - **Let it change things.** With `OCTOPUS_ALLOW_WRITES=true` the assistant can change Intelligent Octopus charging settings, start a bump charge and join Saving Sessions. Read [Security](security.md) first.
-- **Expose fewer tools** with `OCTOPUS_TOOLSETS` for a faster, more focused assistant. See [Configuration](configuration.md#choosing-toolsets).
+- **Expose fewer tools** with `OCTOPUS_TOOLSETS` for a faster, more focused assistant. See [Configuration](configuration.md#keeping-the-tool-list-small).
 - **Put it behind HTTPS** if it's reachable outside your LAN. See [Deployment](deployment.md#tls-with-a-reverse-proxy).
 - **Learn what it can do** in [Using octopus-mcp](usage.md) and the [tool reference](tools.md).

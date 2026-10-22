@@ -6,6 +6,16 @@ For octopus-mcp, the "public API" is the set of tool names, their arguments, the
 
 ## [Unreleased]
 
+### Added
+
+- **Claude Desktop extension bundles.** Each release now has a `.mcpb` bundle for macOS, Windows and Linux on `amd64` and `arm64`, which installs octopus-mcp into Claude Desktop in one click, with a settings form for the API key, account, writes, toolsets and audit log. No Docker or token needed. See [Claude Desktop](docs/clients.md#claude-desktop).
+- **Audit log.** `OCTOPUS_AUDIT_LOG` (a file path or `stderr`) records every call of a write tool, and every `octopus_graphql` mutation, as a JSON line with the time, tool, arguments (secrets redacted) and outcome. The file is created with mode `0600`, and the server refuses to start if it can't write to it. See [Audit log](docs/configuration.md#audit-log).
+- [Keeping the tool list small](docs/configuration.md#keeping-the-tool-list-small) in the configuration docs: how many tools, and how many kilobytes of `tools/list`, each toolset combination costs, read-only and with writes.
+
+### Changed
+
+- A variable set to exactly `${user_config.<key>}`, which is what Claude Desktop passes for an extension setting left empty, counts as unset, like an empty value.
+
 ### Security
 
 - Built with Go 1.27.3, which fixes a `crypto/x509` vulnerability in the standard library (GO-2026-6809).

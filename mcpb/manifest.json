@@ -1,0 +1,207 @@
+{
+  "manifest_version": "0.3",
+  "name": "octopus-mcp",
+  "display_name": "Octopus Energy (octopus-mcp)",
+  "version": "0.0.0-dev",
+  "description": "Your Octopus Energy smart meter usage and costs, tariffs, Agile prices, bills, EV charging and Saving Sessions.",
+  "long_description": "An open-source MCP server for **Octopus Energy** customers in the UK. Ask about your energy in plain English: what you used and what it cost, half-hour by half-hour, the cheapest Agile times to run the dishwasher, your bills and balance, Intelligent Octopus charging slots and Saving Sessions. If you allow it, Claude can also change EV charging settings, start a bump charge and join Saving Sessions.\n\n- **Read-only by default.** Changes need *Allow changes*. Octopus API keys can't be limited to read-only, so this switch is what keeps Claude read-only.\n- **Real costs.** Usage is priced with the rate for every half-hour from the tariff you were on, so Agile, Go, Intelligent Go, Cosy, Flux and Tracker are costed properly.\n- **Secret-safe.** Your API key and Kraken tokens never appear in output or logs.\n\noctopus-mcp is an independent community project, not affiliated with or endorsed by Octopus Energy.",
+  "author": {
+    "name": "Matt Oddie",
+    "url": "https://github.com/mattoddie"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mattoddie/octopus-mcp"
+  },
+  "homepage": "https://octopus-mcp.mattoddie.dev",
+  "documentation": "https://octopus-mcp.mattoddie.dev/docs/clients/#claude-desktop",
+  "support": "https://github.com/mattoddie/octopus-mcp/issues",
+  "icon": "icon.png",
+  "server": {
+    "type": "binary",
+    "entry_point": "server/octopus-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/server/octopus-mcp",
+      "args": [],
+      "env": {
+        "MCP_TRANSPORT": "stdio",
+        "OCTOPUS_API_KEY": "${user_config.api_key}",
+        "OCTOPUS_ACCOUNT": "${user_config.account}",
+        "OCTOPUS_ALLOW_WRITES": "${user_config.allow_writes}",
+        "OCTOPUS_TOOLSETS": "${user_config.toolsets}",
+        "OCTOPUS_AUDIT_LOG": "${user_config.audit_log}"
+      },
+      "platform_overrides": {
+        "win32": {
+          "command": "${__dirname}/server/octopus-mcp.exe"
+        }
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "octopus_find_cheapest_slots",
+      "description": "Find the cheapest time to use electricity on a time-of-use tariff such as Agile: the cheapest continuous block of a given length (for a dishwasher, washing machine, battery or car), runner-up blocks that don't overlap, and the cheapest individual half-hours. Only looks at prices Octopus has published (Agile prices for the next day usually appear around 4pm). Choose the tariff by tariff_code, by product_code with region or postcode, or leave them out for the account's current tariff."
+    },
+    {
+      "name": "octopus_find_region",
+      "description": "Find which of the 14 electricity regions (A to P) a UK postcode is in. Tariff prices differ by region, and tariff codes end with the region letter. Public data; no account needed."
+    },
+    {
+      "name": "octopus_get_account",
+      "description": "A one-call overview of the Octopus Energy account and a good first call: each property's address, its electricity meter points (MPAN, import or export, meter serial numbers, smart meter device IDs) and gas meter points (MPRN, serials, whether the meter reports in kWh or m³), the current tariff on each (tariff and product codes, region), the estimated annual consumption Octopus holds, and the account balance. Use the tariff codes with the tariffs tools, and the MPAN/MPRN and serials with octopus_get_consumption."
+    },
+    {
+      "name": "octopus_get_balance",
+      "description": "Get the account balance in pounds (positive means in credit, negative means you owe Octopus), any overdue balance and the account status."
+    },
+    {
+      "name": "octopus_get_consumption",
+      "description": "Get smart meter readings for electricity (import or export) or gas, totalled by half-hour, hour, day, week or month in UK time, with an estimated cost from the tariff that was active at the time: the actual unit rate for every half-hour (so Agile, Go and other time-of-use tariffs are priced correctly) plus standing charges, including VAT. Readings come from the smart meter, usually a day behind; there is no data for meters that aren't smart or don't send half-hourly reads. Electricity is in kWh. SMETS2 gas meters report m³, which is converted to kWh for costing with the standard formula (m³ × 1.02264 × calorific value ÷ 3.6). For export meters the estimate is what Octopus pays you. Day/night (Economy 7) tariffs are priced assuming night hours of 00:30 to 07:30 GMT, which may not match your meter. Estimates exclude discounts and credits; your bill is the source of truth."
+    },
+    {
+      "name": "octopus_get_dispatches",
+      "description": "Get Intelligent Octopus charging slots (dispatches) for a car or charger: the planned slots Octopus has scheduled (with the energy each should add) and recent completed slots. On Intelligent Octopus Go, home electricity is charged at the off-peak rate during planned smart-charging slots even outside the usual off-peak hours (Octopus caps how many hours a day this applies to; check your tariff terms). Completed slots are reported about 12 hours late."
+    },
+    {
+      "name": "octopus_get_live_usage",
+      "description": "Get near real-time electricity readings from the smart meter through an Octopus Home Mini: current demand in watts and energy used in each interval. Needs a Home Mini paired with the smart meter; without one this returns no data. Readings are typically a few seconds to a few minutes old."
+    },
+    {
+      "name": "octopus_get_octoplus",
+      "description": "Get whether the account is enrolled in Octoplus, Octopus's rewards scheme, and its OctoPoints balance with the value Octopus gives it in pounds."
+    },
+    {
+      "name": "octopus_get_product",
+      "description": "Get an Octopus product's details and its current prices in each region, including VAT: unit rate (pence per kWh; day and night rates for Economy 7), standing charge (pence per day) and any exit fee, for electricity and gas. For half-hourly tariffs such as Agile the unit rate shown is only indicative; use octopus_get_unit_rates. Public data; no account needed."
+    },
+    {
+      "name": "octopus_get_saving_sessions",
+      "description": "Get Octoplus Saving Sessions (and turn-up and weekend happy hour sessions): upcoming sessions for your region with their start and end times, the OctoPoints reward per kWh, whether you've joined each one and the code to join it; whether you've signed up to the campaign; your points balance; and results of past sessions you took part in."
+    },
+    {
+      "name": "octopus_get_standing_charges",
+      "description": "Get a tariff's daily standing charge (pence per day, including VAT): the current charge and how it has changed over a period. Choose the tariff by tariff_code, by product_code with region or postcode, or leave them out for the account's current tariff."
+    },
+    {
+      "name": "octopus_get_unit_rates",
+      "description": "Get a tariff's unit rates (pence per kWh, including VAT) over a period: every half-hour for Agile, the cheap and peak periods for Go, Intelligent Go, Cosy and Flux, daily prices for Tracker, and the flat rate for fixed and flexible tariffs. Also gives the price now, when it next changes, and the minimum, maximum and average. Choose the tariff by tariff_code, by product_code with region or postcode, or leave them out for the account's current tariff. Day/night tariffs list day and night rates separately."
+    },
+    {
+      "name": "octopus_graphql",
+      "description": "Run any query against Octopus's Kraken GraphQL API (or its backend API), for anything the other tools don't cover. The schema can be explored at https://api.octopus.energy/v1/graphql/. Most queries take accountNumber. Only queries are allowed because writes are disabled (OCTOPUS_ALLOW_WRITES=false). Subscriptions, and any operation that mentions tokens, API keys or passwords, are always refused."
+    },
+    {
+      "name": "octopus_list_bills",
+      "description": "List the account's bills (statements), newest first: the period covered, issue date, charges and credits, and the opening and closing balances, all in pounds. Set include_pdf_links for a temporary link to each bill's PDF."
+    },
+    {
+      "name": "octopus_list_devices",
+      "description": "List the devices Octopus controls for smart tariffs such as Intelligent Octopus Go: electric cars, chargers, batteries and heat pumps, with each one's make and model, status (for example SMART_CONTROL_CAPABLE, BOOSTING or LOST_CONNECTION), whether smart charging is suspended, battery level where reported, and its charging schedule (target charge and ready-by time for each day)."
+    },
+    {
+      "name": "octopus_list_products",
+      "description": "List the energy products (tariffs) Octopus Energy sells now, such as Agile, Go, Intelligent Go, Cosy, Tracker, Flux, Flexible and fixed deals, with whether each is variable, a tracker, green, import or export. Public data; no account needed. Use the codes with octopus_get_product for prices."
+    },
+    {
+      "name": "octopus_list_transactions",
+      "description": "List the account's transactions, newest first: charges for energy, payments (such as direct debits), credits (such as Octoplus rewards or Saving Session payouts) and refunds, in pounds, with the balance after each."
+    },
+    {
+      "name": "octopus_rest_get",
+      "description": "GET any path of the Octopus REST API (https://api.octopus.energy/v1), for anything the other tools don't cover, such as /electricity-meter-points/<MPAN>/ or a consumption path with your own parameters. The REST API is read-only; the API key is sent with HTTP Basic auth."
+    }
+  ],
+  "tools_generated": true,
+  "prompts": [
+    {
+      "name": "energy_report",
+      "description": "A plain-English report on your electricity (and gas) use and cost for a period, with the tariff, the expensive times of day and ideas to save.",
+      "arguments": [
+        "from",
+        "to"
+      ],
+      "text": "Give me a report on my Octopus Energy use from 30 days ago to yesterday.\n1. octopus_get_account: properties, meter points and current tariffs (which tell you whether I'm on a time-of-use tariff like Agile, Go or Intelligent Go).\n2. octopus_get_consumption for electricity import, group_by day, for the period; and for gas if I have it, and electricity export if I have solar.\n3. octopus_get_consumption again with group_by hour for the last 7 days of the period, to see what time of day I use most.\nReport: total kWh and estimated cost (unit costs and standing charges) for each fuel, average pence per kWh, the most expensive days and hours, how much of my electricity fell in peak versus off-peak times if I'm on a time-of-use tariff, and three practical, specific ideas to cut the bill. Mention any gaps in the data and any assumptions the tools flagged (like gas units). Use GBP. Don't change anything."
+    },
+    {
+      "name": "plan_cheap_usage",
+      "description": "Find the cheapest times in the next day or so to run an appliance, charge a car or battery, on Agile or another time-of-use tariff.",
+      "arguments": [
+        "job",
+        "deadline"
+      ],
+      "text": "I want to run this as cheaply as possible on my Octopus tariff: ${arguments.job}. Deadline: none.\n1. octopus_get_account to find my electricity import tariff (skip if you already know it).\n2. octopus_find_cheapest_slots with duration_hours and kwh from the job (ask me if they aren't clear) and to set to the deadline.\n3. If the tariff is flat-rate, say so: timing won't save money (except during Saving Sessions; check octopus_get_saving_sessions).\nTell me the best start time in UK time, the expected cost and how that compares with running it now, plus the runner-up times. Mention any negative-price periods. Don't change anything."
+    },
+    {
+      "name": "compare_tariffs",
+      "description": "Estimate what your actual recent electricity use would have cost on other Octopus tariffs, such as Agile, Go, Cosy or a fixed deal, against what you're on now.",
+      "arguments": [
+        "products",
+        "days"
+      ],
+      "text": "Compare my electricity costs across Octopus tariffs using my real usage over the last 30 days.\n1. octopus_get_account: my region and current electricity import tariff.\n2. octopus_get_consumption (group_by half_hour, include_cost) for the period on my current tariff: the baseline. If there are more than 400 half-hours, fetch day by day or use group_by hour with care.\n3. octopus_list_products to find the current product codes for: Agile, Go, Flexible and the cheapest 12-month fixed.\n4. For each product, octopus_get_unit_rates (product_code and my region) over the same period and octopus_get_standing_charges, then price my half-hourly usage against those rates.\nShow a table: tariff, unit cost, standing charges, total and difference from my current tariff, and the effective pence per kWh. Note eligibility rules (for example Go and Intelligent Go need an EV or charger, Cosy is for heat pumps) and exit fees on my current tariff (octopus_get_product). Make clear these are estimates from past usage. Don't change anything."
+    },
+    {
+      "name": "ev_charging_check",
+      "description": "Check an Intelligent Octopus car or charger: status, schedule, planned and recent charging slots, and anything that needs attention.",
+      "arguments": [],
+      "text": "Check my Intelligent Octopus EV charging.\n1. octopus_list_devices: the car or charger, its state, battery level and schedule (target and ready-by time each day).\n2. octopus_get_dispatches: planned slots tonight (times and kWh) and what charged in the last day.\n3. octopus_get_unit_rates for my tariff today and tomorrow, to show the off-peak window.\nReport: whether everything is working (flag LOST_CONNECTION, SMART_CONTROL_OFF or suspended), when it will charge and roughly how much, and anything I should change. If I ask for a change, use octopus_set_charge_preferences, octopus_bump_charge or octopus_set_smart_charging only after I confirm, and remember a bump charge is usually at the peak rate."
+    },
+    {
+      "name": "saving_session_check",
+      "description": "See upcoming Octoplus Saving Sessions, whether you've joined, what you could earn, and how past sessions went.",
+      "arguments": [],
+      "text": "Check Octoplus Saving Sessions for me.\n1. octopus_get_saving_sessions: upcoming sessions in my region, whether I've joined each, the points per kWh, and my past results.\n2. octopus_get_octoplus for my points balance and what it's worth.\n3. For each upcoming session, octopus_get_consumption (group_by half_hour) for the same times on the previous few weekdays, to estimate my usual use and what I might earn by cutting it.\nReport the sessions in UK time with what's at stake, plus practical tips for that time of day. If I haven't joined an upcoming session, offer to join it with octopus_join_saving_session, and only do so after I say yes."
+    }
+  ],
+  "keywords": [
+    "octopus",
+    "octopus-energy",
+    "energy",
+    "smart-meter",
+    "agile",
+    "ev-charging",
+    "uk"
+  ],
+  "license": "MIT",
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ]
+  },
+  "user_config": {
+    "api_key": {
+      "type": "string",
+      "title": "API key",
+      "description": "Your Octopus API key, from Personal details → API access in your Octopus account (https://octopus.energy/dashboard/new/accounts/personal-details/api-access). It starts sk_live_.",
+      "sensitive": true,
+      "required": true
+    },
+    "account": {
+      "type": "string",
+      "title": "Account number",
+      "description": "Your account number, like A-1234ABCD. Optional: when the key can see only one account, it is found automatically.",
+      "default": ""
+    },
+    "allow_writes": {
+      "type": "boolean",
+      "title": "Allow changes",
+      "description": "Let Claude change Intelligent Octopus charging (target and ready-by time, bump charges, smart charging on or off) and join Saving Sessions. Off means read-only.",
+      "default": false
+    },
+    "toolsets": {
+      "type": "string",
+      "title": "Toolsets",
+      "description": "Optional comma-separated list to expose fewer tools, e.g. account,consumption,tariffs. Choose from account, consumption, tariffs, intelligent, octoplus and raw. Empty means all.",
+      "default": ""
+    },
+    "audit_log": {
+      "type": "string",
+      "title": "Audit log file",
+      "description": "Optional full path to a file, e.g. /Users/you/octopus-mcp-audit.jsonl, where every change Claude makes is appended as a JSON line. The file is created if it doesn't exist; its folder must exist. stderr writes the lines to Claude Desktop's MCP log instead. Off when left empty.",
+      "default": ""
+    }
+  }
+}

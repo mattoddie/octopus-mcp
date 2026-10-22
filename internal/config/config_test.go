@@ -198,3 +198,55 @@ func TestLoopbackURLsMayUseHTTP(t *testing.T) {
 		t.Errorf("userinfo: %v", err)
 	}
 }
+
+// Claude Desktop passes an MCP Bundle setting the user left empty as the
+// literal ${user_config.<key>} on some versions. That, and an empty value, mean unset.
+func TestBundlePlaceholdersAreUnset(t *testing.T) {
+	m := map[string]string{"OCTOPUS_API_KEY": key}
+	for _, name := range []string{"OCTOPUS_ACCOUNT", "OCTOPUS_ALLOW_WRITES", "OCTOPUS_TOOLSETS", "OCTOPUS_AUDIT_LOG", "OCTOPUS_TIMEOUT_MS", "OCTOPUS_API_KEY_FILE"} {
+		m[name] = "${user_config." + strings.ToLower(name) + "}"
+	}
+	cfg, err := Load(MapEnv(m))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Octopus.Account != "" || cfg.Tools.AllowWrites || cfg.Tools.AuditLog != "" || len(cfg.Tools.Toolsets) != len(Toolsets) || cfg.Octopus.Timeout != 30*time.Second || cfg.Octopus.APIKey != key {
+		t.Errorf("placeholders were used as values: %+v %+v", cfg.Octopus.Account, cfg.Tools)
+	}
+	m["OCTOPUS_API_KEY"] = "${user_config.api_key}"
+	if _, err := Load(MapEnv(m)); err == nil || !strings.Contains(err.Error(), "OCTOPUS_API_KEY is required") {
+		t.Errorf("placeholder API key: %v", err)
+	}
+	// Only a whole placeholder is treated as unset.
+	_, err = Load(MapEnv(map[string]string{"OCTOPUS_API_KEY": key, "OCTOPUS_ACCOUNT": "x${user_config.account}"}))
+	if err == nil {
+		t.Error("a partial placeholder was treated as unset")
+	}
+}
+
+func TestAuditLog(t *testing.T) {
+	load := func(v string) (*Config, error) {
+		return Load(MapEnv(map[string]string{"OCTOPUS_API_KEY": key, "OCTOPUS_AUDIT_LOG": v}))
+	}
+	if cfg, err := load(""); err != nil || cfg.Tools.AuditLog != "" {
+		t.Errorf("off by default: %v %q", err, cfg.Tools.AuditLog)
+	}
+	if cfg, err := load("stderr"); err != nil || cfg.Tools.AuditLog != AuditLogStderr {
+		t.Errorf("stderr: %v", err)
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "audit.jsonl")
+	if cfg, err := load(path); err != nil || cfg.Tools.AuditLog != path {
+		t.Errorf("path: %v", err)
+	}
+	if info, err := os.Stat(path); err != nil || info.Mode().Perm() != AuditLogMode {
+		t.Errorf("file mode: %v %v", info, err)
+	}
+	_, err := load(filepath.Join(dir, "missing", "audit.jsonl"))
+	if err == nil || !strings.Contains(err.Error(), "OCTOPUS_AUDIT_LOG: cannot write to") || !strings.Contains(err.Error(), "no such file or directory") {
+		t.Errorf("missing directory: %v", err)
+	}
+	if _, err := load(dir); err == nil {
+		t.Error("a directory was accepted")
+	}
+}

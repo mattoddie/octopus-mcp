@@ -1,6 +1,7 @@
 ---
 import logo from "../../../docs/assets/logo.svg?raw";
 import { prompts, toolsets, totals } from "../lib/tools";
+import { DESCRIPTION as description } from "../lib/llms";
 
 const GITHUB = "https://github.com/mattoddie/octopus-mcp";
 
@@ -22,8 +23,6 @@ const slotTime = (i: number) => `${String(Math.floor(i / 2)).padStart(2, "0")}:$
 const cheapWindow = { x: BAR.x0 + cheapestStart * BAR.step - 5, width: BAR.step * 4 + 1, label: `${slotTime(cheapestStart)} – ${slotTime(cheapestStart + 4)}` };
 const nowSlot = 20;
 const title = "octopus-mcp: talk to your energy";
-const description =
-  "An unofficial, open-source MCP server for Octopus Energy. Ask Claude and other AI assistants about your smart meter usage and costs, Agile prices, tariffs, bills and EV charging, and let them join Saving Sessions when you allow it. Runs in Docker.";
 
 const toolsetIcons: Record<string, string> = {
   account: "🏠",
@@ -106,6 +105,9 @@ const connectSnippet = `claude mcp add --transport http octopus \\
     <meta property="og:description" content={description} />
     <meta property="og:url" content={Astro.site} />
     <meta property="og:image" content={new URL("/og.png", Astro.site)} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={title} />
     <meta name="twitter:card" content="summary_large_image" />
     <script
       type="application/ld+json"

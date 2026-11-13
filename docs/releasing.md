@@ -1,6 +1,6 @@
 # Releasing
 
-Releases are driven by **version tags**. Pushing a tag like `v1.2.3` triggers the [Release workflow](../.github/workflows/release.yml). That workflow creates a draft GitHub release, builds the Docker image for `linux/amd64` and `linux/arm64` and pushes it to `ghcr.io/mattoddie/octopus-mcp`. It then builds the MCP Bundles (`.mcpb`) for Claude Desktop and attaches them to the draft, publishes the release, and for stable releases publishes the server to the [MCP Registry](#the-mcp-registry). Nothing is published by merging to `main` alone.
+Releases are driven by **version tags**. Pushing a tag like `v1.2.3` triggers the [Release workflow](../.github/workflows/release.yml). That workflow creates a draft GitHub release, builds the Docker image for `linux/amd64` and `linux/arm64` and pushes it to `ghcr.io/mattoddie/octopus-mcp`. It then builds the MCP Bundles (`.mcpb`) for Claude Desktop and plain binary archives, and attaches them to the draft with a `SHA256SUMS` file. Then it publishes the release, and for stable releases publishes the server to the [MCP Registry](#the-mcp-registry). Nothing is published by merging to `main` alone.
 
 - [Versioning](#versioning)
 - [Release checklist](#release-checklist)
@@ -36,7 +36,7 @@ The version comes **from the tag**. There's no version file in the repository: b
    git push origin v1.2.0
    ```
 
-4. **Watch the workflow.** Open **Actions → Release**. It takes a few minutes. It creates a draft release with notes generated from the merged PRs, adds a *Container image* section with the pull command, digest and tags, attaches the bundles and adds a *Claude Desktop* section listing them, then publishes the release. For a stable release, the *Publish to the MCP Registry* job runs last.
+4. **Watch the workflow.** Open **Actions → Release**. It takes a few minutes. It creates a draft release with notes generated from the merged PRs, adds a *Container image* section with the pull command, digest and tags, attaches the bundles and binaries and adds *Claude Desktop* and *Binaries* sections listing them, then publishes the release. For a stable release, the *Publish to the MCP Registry* job runs last.
 5. **Edit the release notes** if needed. The notes and title of a published release can still be edited; its assets and tag can't.
 6. **Check the image:** `docker pull ghcr.io/mattoddie/octopus-mcp:1.2.0`, then `docker run --rm ghcr.io/mattoddie/octopus-mcp:1.2.0 version`. If you can, install the bundle for your computer in Claude Desktop too. For a stable release, check it appears in the [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.mattoddie/octopus-mcp).
 
@@ -64,7 +64,7 @@ Pre-releases are published only under their exact version (`ghcr.io/mattoddie/oc
 | Push | To `ghcr.io/mattoddie/octopus-mcp` using the workflow's `GITHUB_TOKEN`. No personal tokens are needed. |
 | Supply chain | Attaches an SBOM and SLSA provenance to the image, and pushes a signed build provenance attestation (`gh attestation verify`). |
 | Release notes | Appends the pull command, digest and tags. |
-| MCP Bundles | After the image, runs `make mcpb VERSION=X.Y.Z`: one `octopus-mcp-X.Y.Z-<os>-<arch>.mcpb` for each of `darwin`, `windows` and `linux` on `amd64` and `arm64`. It validates each manifest with the official `@anthropic-ai/mcpb` CLI (pinned in the workflow), attests their build provenance, uploads them to the release and lists them in the notes. |
+| MCP Bundles and binaries | After the image, runs `make dist VERSION=X.Y.Z`: one `octopus-mcp-X.Y.Z-<os>-<arch>.mcpb` for each of `darwin`, `windows` and `linux` on `amd64` and `arm64`, the same binaries as `octopus-mcp-X.Y.Z-<os>-<arch>.tar.gz` (`.zip` for Windows) with the licence, and `SHA256SUMS`. It checks the Linux binary reports the version and the checksums match, validates each manifest with the official `@anthropic-ai/mcpb` CLI (pinned in the workflow), attests the build provenance of the bundles and archives, uploads everything to the draft and lists it in the notes. |
 | Publish | Publishes the draft once the image and the bundles are in place. Published releases are [immutable](#immutable-releases). |
 | MCP Registry | Stable releases only, after the release is published. Stamps [`server.json`](../server.json) with the version, the image tag and the SHA-256 of each bundle as uploaded, then publishes it with `mcp-publisher`. See [The MCP Registry](#the-mcp-registry). |
 
@@ -72,7 +72,7 @@ Pre-releases are published only under their exact version (`ghcr.io/mattoddie/oc
 
 An [MCP Bundle](https://github.com/modelcontextprotocol/mcpb) is a zip file with a `manifest.json`, the icon, the licence and the server binary. The manifest lives in [`mcpb/manifest.json`](../mcpb/manifest.json): edit its descriptions and settings by hand, while `make docs` regenerates its `tools` and `prompts` from the server (CI checks they're current). [`cmd/mcpb`](../cmd/mcpb/main.go) stamps the version and platform into a copy and writes the zip.
 
-There's one bundle per OS and architecture because a manifest can only choose the command by OS, not by CPU. Try one locally with `make mcpb` (the bundles land in `dist/`). CI builds them on every pull request, validates the manifests and starts the Linux one over stdio.
+There's one bundle per OS and architecture because a manifest can only choose the command by OS, not by CPU. Try one locally with `make mcpb`, or build every release asset with `make dist` (they land in `dist/`). CI builds them on every pull request, validates the manifests and starts the Linux one over stdio.
 
 The bundles aren't signed. The macOS binaries carry the Go linker's ad-hoc signature, which Apple silicon requires, but they aren't signed with a Developer ID or notarised, so macOS may ask the user to allow them (see [Claude Desktop](clients.md#if-it-doesnt-start)). `mcpb sign` can add a signature to the bundle itself, but that needs a code-signing certificate and isn't set up.
 

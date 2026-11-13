@@ -222,3 +222,28 @@ Tips:
 - **Always pass `-i` and never `-t`.** A TTY corrupts the MCP message stream.
 - **Docker on another machine** works too. Set `DOCKER_HOST` in the client's `env`.
 - **Pin a version** (for example `:1.2.3`) so a new `latest` doesn't surprise you. See [Deployment](deployment.md#image-tags).
+
+### Without Docker
+
+With a [release binary](deployment.md#download-a-release-binary), the client runs it directly. Use the binary's full path as the command, and pass the settings as environment variables. In a JSON client config, that looks like:
+
+```json
+{
+  "mcpServers": {
+    "octopus": {
+      "command": "/usr/local/bin/octopus-mcp",
+      "env": {
+        "OCTOPUS_API_KEY": "sk_live_..."
+      }
+    }
+  }
+}
+```
+
+The binary uses stdio by default, so there's no `MCP_TRANSPORT` to set. In Claude Code:
+
+```sh
+claude mcp add octopus \
+  --env OCTOPUS_API_KEY=sk_live_... \
+  -- /usr/local/bin/octopus-mcp
+```

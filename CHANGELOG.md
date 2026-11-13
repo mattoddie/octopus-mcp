@@ -6,6 +6,8 @@ For octopus-mcp, the "public API" is the set of tool names, their arguments, the
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-13
+
 ### Added
 
 - Each release now has plain binaries for macOS, Linux and Windows on `amd64` and `arm64`, with a `SHA256SUMS` file and build provenance attestations, so you can run octopus-mcp without Docker. See [Running without Docker](docs/deployment.md#running-without-docker).
@@ -102,7 +104,8 @@ First release, not yet tagged. It hasn't yet been tested against a live Octopus 
 - Multi-arch distroless Docker image (`linux/amd64`, `linux/arm64`) published to GHCR on each release, with SBOM and provenance attestation.
 - Documentation, including a tool reference generated from the code, and a website.
 
-[Unreleased]: https://github.com/mattoddie/octopus-mcp/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/mattoddie/octopus-mcp/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/mattoddie/octopus-mcp/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/mattoddie/octopus-mcp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/mattoddie/octopus-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mattoddie/octopus-mcp/compare/v0.1.1...v0.2.0

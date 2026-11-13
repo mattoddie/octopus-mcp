@@ -19,6 +19,8 @@ This guide takes you from nothing to asking your first question about your Octop
 You don't need an account at all for the public tariff tools (products, prices and Agile rates), but the server still needs an API key to start.
 
 > **Using Claude Desktop on a Mac or Windows PC?** You don't need Docker. Do step 1, then install the [extension bundle](clients.md#claude-desktop) from the releases page and enter your API key in its settings, instead of steps 2 to 4.
+>
+> **No Docker at all?** Each release also has plain binaries for macOS, Linux and Windows. See [Running without Docker](deployment.md#running-without-docker) and [connecting a client to the binary](clients.md#without-docker).
 
 ## 1. Get your API key
 

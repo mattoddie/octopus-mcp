@@ -18,7 +18,7 @@ MCP_PUBLISHER_DIR := .build/mcp-publisher-$(MCP_PUBLISHER_VERSION)
 MCP_PUBLISHER := $(MCP_PUBLISHER_DIR)/mcp-publisher
 SERVER_JSON ?= server.json
 
-.PHONY: build test lint docs docs-check image mcpb server-json mcp-publisher registry-validate registry-publish clean
+.PHONY: build test lint docs docs-check image mcpb dist server-json mcp-publisher registry-validate registry-publish clean
 
 build:
 	go build -trimpath -ldflags "$(LDFLAGS)" -o bin/octopus-mcp ./cmd/octopus-mcp
@@ -52,6 +52,22 @@ mcpb:
 		.build/mcpb/pack pack -version $(VERSION) -goos $$os -binary .build/mcpb/$$os-$$arch/octopus-mcp$$ext \
 			-o dist/octopus-mcp-$(VERSION)-$$os-$$arch.mcpb; \
 	done
+
+# Release assets: the bundles, plus the same binaries as plain archives with the licence
+# (dist/octopus-mcp-$(VERSION)-<os>-<arch>.tar.gz, or .zip for Windows) and dist/SHA256SUMS.
+dist: mcpb
+	rm -f dist/*.tar.gz dist/*.zip dist/SHA256SUMS
+	set -e; for p in $(MCPB_PLATFORMS); do \
+		os=$${p%/*}; arch=$${p#*/}; dir=.build/mcpb/$$os-$$arch; name=octopus-mcp-$(VERSION)-$$os-$$arch; \
+		cp LICENSE $$dir/; \
+		if [ "$$os" = windows ]; then \
+			(cd $$dir && zip -q -X ../../../dist/$$name.zip octopus-mcp.exe LICENSE); \
+		else \
+			tar -czf dist/$$name.tar.gz -C $$dir octopus-mcp LICENSE; \
+		fi; \
+	done
+	cd dist && if command -v sha256sum >/dev/null; then sha256sum *.mcpb *.tar.gz *.zip; \
+		else shasum -a 256 *.mcpb *.tar.gz *.zip; fi > SHA256SUMS
 
 # server.json for the MCP Registry, stamped with VERSION and the SHA-256 of each
 # bundle in dist/, written to dist/server.json. Run it after `make mcpb`, or

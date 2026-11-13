@@ -38,7 +38,7 @@ Ask about your energy in plain English. The assistant picks from **22 tools** to
 
 ## Highlights
 
-- **🐳 Docker-first and tiny.** One image (`ghcr.io/mattoddie/octopus-mcp`) for `linux/amd64` and `linux/arm64`, about 20 MB. It's a single static Go binary on a distroless base, with no shell or package manager, running as a non-root user with nothing to write. It serves Streamable HTTP for a long-running service, or stdio for `docker run -i`. You can also run the binary on its own, and for Claude Desktop there's a one-click extension bundle (`.mcpb`) that needs no Docker.
+- **🐳 Docker-first and tiny.** One image (`ghcr.io/mattoddie/octopus-mcp`) for `linux/amd64` and `linux/arm64`, about 20 MB. It's a single static Go binary on a distroless base, with no shell or package manager, running as a non-root user with nothing to write. It serves Streamable HTTP for a long-running service, or stdio for `docker run -i`. Each release also has plain binaries for macOS, Linux and Windows on `amd64` and `arm64` to run on their own, and for Claude Desktop there's a one-click extension bundle (`.mcpb`) that needs no Docker.
 - **💷 Real costs, half-hour by half-hour.** Consumption is priced with the actual unit rate for every half-hour from the tariff you were on at the time, plus standing charges, so Agile, Go, Intelligent Go, Cosy, Flux and Tracker are costed properly.
 - **🕑 Cheapest-time finder.** Finds the cheapest continuous block for a job, runner-up times and the cheapest half-hours, and says what it'll cost against running it now.
 - **🔥 Honest about units.** SMETS2 gas meters report m³. octopus-mcp knows which your meter uses, converts with the standard formula, and tells you what it assumed.
@@ -76,7 +76,7 @@ Now ask *"What tariff am I on, and what's my electricity price right now?"* in C
 
 **Using Claude Desktop on a Mac or Windows PC?** You don't need Docker at all. Download the `.mcpb` bundle for your computer from the [latest release](https://github.com/mattoddie/octopus-mcp/releases/latest), open it, and enter your API key in the settings. See [Claude Desktop](docs/clients.md#claude-desktop).
 
-Using **VS Code, Cursor or Codex**? See [Connecting MCP clients](docs/clients.md). Prefer not to run a service? Use [stdio mode](docs/clients.md#stdio-mode) with `docker run -i` or the local binary.
+Using **VS Code, Cursor or Codex**? See [Connecting MCP clients](docs/clients.md). Prefer not to run a service? Use [stdio mode](docs/clients.md#stdio-mode) with `docker run -i`, or a [release binary](docs/deployment.md#running-without-docker) without Docker.
 
 octopus-mcp is listed in the [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.mattoddie/octopus-mcp) as `io.github.mattoddie/octopus-mcp`, so clients that install from the registry can find it there, with the Docker image and the bundles.
 

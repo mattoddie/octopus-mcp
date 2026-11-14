@@ -13,7 +13,7 @@ This guide takes you from nothing to asking your first question about your Octop
 ## What you need
 
 - **An Octopus Energy account** in the UK that you can log in to at [octopus.energy](https://octopus.energy). Consumption data needs a **smart meter** that sends half-hourly readings.
-- **A machine that runs Docker.** This could be a NAS, a home server, a Raspberry Pi, a small VM or your laptop. The image supports both `amd64` and `arm64`. If you'd rather not use Docker, there's a single binary too. See [Running without Docker](deployment.md#running-without-docker).
+- **A machine that runs Docker.** This could be a NAS, a home server, a Raspberry Pi, a small VM or your laptop. The image supports both `amd64` and `arm64`. If you'd rather not use Docker, there's a single binary too. See [Running without Docker](deployment.md#running-without-docker). On macOS or Linux, `brew install mattoddie/tap/octopus-mcp` installs it with Homebrew.
 - **An MCP client**, such as [Claude Code](https://claude.com/claude-code), Claude Desktop, VS Code, Cursor or Codex.
 
 You don't need an account at all for the public tariff tools (products, prices and Agile rates), but the server still needs an API key to start.

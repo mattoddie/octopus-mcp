@@ -76,7 +76,7 @@ Now ask *"What tariff am I on, and what's my electricity price right now?"* in C
 
 **Using Claude Desktop on a Mac or Windows PC?** You don't need Docker at all. Download the `.mcpb` bundle for your computer from the [latest release](https://github.com/mattoddie/octopus-mcp/releases/latest), open it, and enter your API key in the settings. See [Claude Desktop](docs/clients.md#claude-desktop).
 
-Using **VS Code, Cursor or Codex**? See [Connecting MCP clients](docs/clients.md). Prefer not to run a service? Use [stdio mode](docs/clients.md#stdio-mode) with `docker run -i`, or a [release binary](docs/deployment.md#running-without-docker) without Docker.
+Using **VS Code, Cursor or Codex**? See [Connecting MCP clients](docs/clients.md). Prefer not to run a service? Use [stdio mode](docs/clients.md#stdio-mode) with `docker run -i`, or a [release binary](docs/deployment.md#running-without-docker) without Docker. On macOS or Linux: `brew install mattoddie/tap/octopus-mcp`.
 
 octopus-mcp is listed in the [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.mattoddie/octopus-mcp) as `io.github.mattoddie/octopus-mcp`, so clients that install from the registry can find it there, with the Docker image and the bundles.
 

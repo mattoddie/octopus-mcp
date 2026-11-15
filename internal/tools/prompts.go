@@ -62,10 +62,9 @@ Tell me the best start time in UK time, the expected cost and how that compares 
 		text: func(a map[string]string) string {
 			return fmt.Sprintf(`Compare my electricity costs across Octopus tariffs using my real usage over the last %s days.
 1. octopus_get_account: my region and current electricity import tariff.
-2. octopus_get_consumption (group_by half_hour, include_cost) for the period on my current tariff: the baseline. If there are more than 400 half-hours, fetch day by day or use group_by hour with care.
-3. octopus_list_products to find the current product codes for: %s.
-4. For each product, octopus_get_unit_rates (product_code and my region) over the same period and octopus_get_standing_charges, then price my half-hourly usage against those rates.
-Show a table: tariff, unit cost, standing charges, total and difference from my current tariff, and the effective pence per kWh. Note eligibility rules (for example Go and Intelligent Go need an EV or charger, Cosy is for heat pumps) and exit fees on my current tariff (octopus_get_product). Make clear these are estimates from past usage. Don't change anything.`, or(a["days"], "30"), or(a["products"], "Agile, Go, Flexible and the cheapest 12-month fixed"))
+2. octopus_list_products to find the current product codes for: %s.
+3. octopus_compare_tariffs with those product codes, from %s days ago to yesterday: it re-prices my half-hourly usage on each one and on the tariffs I was actually on.
+Show a table: tariff, unit cost, standing charges, total and difference from my current tariff, and the effective pence per kWh. Note eligibility rules (for example Go and Intelligent Go need an EV or charger, Cosy is for heat pumps) and exit fees on my current tariff (octopus_get_product). Make clear these are estimates from past usage. Don't change anything.`, or(a["days"], "30"), or(a["products"], "Agile, Go, Flexible and the cheapest 12-month fixed"), or(a["days"], "30"))
 		},
 	},
 	{

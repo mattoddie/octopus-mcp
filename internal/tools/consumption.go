@@ -75,6 +75,122 @@ func fetchConsumption(ctx context.Context, cl *octopus.Client, mp *meterPoint, s
 	return out, nil
 }
 
+// meterReadings fetches a meter point's half-hourly readings. A meter point can
+// list old and new meters, so unless serial is given, the one with the most
+// readings in the period is used. It returns the readings and that serial.
+func meterReadings(ctx context.Context, cl *octopus.Client, mp *meterPoint, serial string, from, to time.Time) ([]reading, string, error) {
+	serials := mp.Serials
+	if serial != "" {
+		serials = []string{serial}
+	}
+	if len(serials) == 0 {
+		return nil, "", fmt.Errorf("%s has no meters listed", mp.label())
+	}
+	var readings []reading
+	used := serials[0]
+	var lastErr error
+	for _, s := range serials {
+		r, err := fetchConsumption(ctx, cl, mp, s, from, to)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if len(r) > len(readings) {
+			readings, used = r, s
+		}
+	}
+	if readings == nil && lastErr != nil {
+		return nil, "", lastErr
+	}
+	return readings, used, nil
+}
+
+// gasConversion works out the units a meter's readings are in and the factor
+// that turns them into kWh (1 for electricity and kWh gas meters), with the
+// assumptions made on the way.
+func gasConversion(ctx context.Context, cl *octopus.Client, account string, mp *meterPoint, serial, override string, calorific *float64) (string, float64, []string) {
+	if mp.Fuel != "gas" {
+		return "kWh", 1, nil
+	}
+	var assumptions []string
+	fromOctopus := ""
+	if override == "" {
+		if devices, err := loadSmartDevices(ctx, cl, account); err == nil {
+			fromOctopus = devices[serial].Units
+		}
+	}
+	units, assumed := gasUnitsFor(override, fromOctopus)
+	if assumed {
+		assumptions = append(assumptions, "Octopus didn't say which units this gas meter reports in, so m³ (SMETS2) was assumed. If the meter is SMETS1 its readings are already kWh: call again with gas_units=kwh.")
+	}
+	perKWh := 1.0
+	if units == "m³" {
+		cv := defaultCV
+		if calorific != nil && *calorific > 0 {
+			cv = *calorific
+		}
+		perKWh = gasVolumeCorrection * cv / mjPerKWh
+		assumptions = append(assumptions, fmt.Sprintf("Gas m³ converted to kWh with calorific value %.1f MJ/m³ (×%.3f).", cv, perKWh))
+	}
+	return units, perKWh, assumptions
+}
+
+// agreementPricer prices half-hours at the unit rate of whichever of a meter
+// point's agreements was active, loading each agreement's rates once.
+type agreementPricer struct {
+	ctx      context.Context
+	cl       *octopus.Client
+	mp       *meterPoint
+	from, to time.Time
+	// Rates are loaded per agreement (tariff code and start), for that agreement's
+	// part of the period: the same tariff code can come back in a later agreement.
+	lookups     map[agreementKey]*octopus.UnitRateLookup
+	errs        []string
+	assumptions []string
+}
+
+type agreementKey struct {
+	code string
+	from time.Time
+}
+
+func newAgreementPricer(ctx context.Context, cl *octopus.Client, mp *meterPoint, from, to time.Time) *agreementPricer {
+	return &agreementPricer{ctx: ctx, cl: cl, mp: mp, from: from, to: to, lookups: map[agreementKey]*octopus.UnitRateLookup{}}
+}
+
+// at returns the unit rate (p/kWh inc VAT) in force at t, or false if unknown.
+func (p *agreementPricer) at(t time.Time) (float64, bool) {
+	ag := p.mp.agreementAt(t)
+	if ag == nil {
+		return 0, false
+	}
+	key := agreementKey{ag.Tariff.Code, ag.From}
+	l, ok := p.lookups[key]
+	if !ok {
+		lf, lt := maxTime(p.from, ag.From), p.to
+		if !ag.To.IsZero() && ag.To.Before(lt) {
+			lt = ag.To
+		}
+		var err error
+		l, err = p.cl.LoadUnitRates(p.ctx, ag.Tariff, lf, lt)
+		if err != nil {
+			p.errs = append(p.errs, ag.Tariff.Code+": "+err.Error())
+			l = nil
+		}
+		p.lookups[key] = l
+		if l != nil && ag.Tariff.DayNight() {
+			p.assumptions = append(p.assumptions, dayNightAssumption)
+		}
+	}
+	if l == nil {
+		return 0, false
+	}
+	r, ok := l.At(t)
+	return r.IncVAT, ok
+}
+
+const dayNightAssumption = "Day/night tariff priced with night hours 00:30 to 07:30 GMT; Economy 7 hours vary by meter."
+
 // groupStart returns the start of the group a reading belongs to, in UK time.
 func groupStart(t time.Time, by string) time.Time {
 	l := t.In(octopus.London)
@@ -157,97 +273,19 @@ func registerConsumption(c *Context) {
 		if err != nil {
 			return nil, err
 		}
-		serials := mp.Serials
-		if a.Serial != "" {
-			serials = []string{a.Serial}
+		readings, serial, err := meterReadings(ctx, cl, mp, a.Serial, from, to)
+		if err != nil {
+			return nil, err
 		}
-		if len(serials) == 0 {
-			return nil, fmt.Errorf("%s has no meters listed", mp.label())
-		}
-		// A meter point can list old and new meters; use whichever has readings.
-		var readings []reading
-		serial := serials[0]
-		var lastErr error
-		for _, s := range serials {
-			r, err := fetchConsumption(ctx, cl, mp, s, from, to)
-			if err != nil {
-				lastErr = err
-				continue
-			}
-			if len(r) > len(readings) {
-				readings, serial = r, s
-			}
-		}
-		if readings == nil && lastErr != nil {
-			return nil, lastErr
-		}
-
-		var assumptions []string
-		units, perKWh := "kWh", 1.0
-		if mp.Fuel == "gas" {
-			fromOctopus := ""
-			if a.GasUnits == "" {
-				if devices, err := loadSmartDevices(ctx, cl, number); err == nil {
-					fromOctopus = devices[serial].Units
-				}
-			}
-			var assumed bool
-			units, assumed = gasUnitsFor(a.GasUnits, fromOctopus)
-			if assumed {
-				assumptions = append(assumptions, "Octopus didn't say which units this gas meter reports in, so m³ (SMETS2) was assumed. If the meter is SMETS1 its readings are already kWh: call again with gas_units=kwh.")
-			}
-			if units == "m³" {
-				cv := defaultCV
-				if a.CalorificValue != nil && *a.CalorificValue > 0 {
-					cv = *a.CalorificValue
-				}
-				perKWh = gasVolumeCorrection * cv / mjPerKWh
-				assumptions = append(assumptions, fmt.Sprintf("Gas m³ converted to kWh with calorific value %.1f MJ/m³ (×%.3f).", cv, perKWh))
-			}
-		}
+		units, perKWh, assumptions := gasConversion(ctx, cl, number, mp, serial, a.GasUnits, a.CalorificValue)
 
 		includeCost := a.IncludeCost == nil || *a.IncludeCost
 		costWord := "cost_gbp"
 		if mp.Export {
 			costWord = "earnings_gbp"
 		}
-		// Rates are loaded per agreement (tariff code and start), for that agreement's
-		// part of the period: the same tariff code can come back in a later agreement.
-		type lookupKey struct {
-			code string
-			from time.Time
-		}
-		lookups := map[lookupKey]*octopus.UnitRateLookup{}
-		var costErrs []string
-		priceAt := func(t time.Time) (float64, bool) {
-			ag := mp.agreementAt(t)
-			if ag == nil {
-				return 0, false
-			}
-			key := lookupKey{ag.Tariff.Code, ag.From}
-			l, ok := lookups[key]
-			if !ok {
-				lf, lt := maxTime(from, ag.From), to
-				if !ag.To.IsZero() && ag.To.Before(lt) {
-					lt = ag.To
-				}
-				var err error
-				l, err = cl.LoadUnitRates(ctx, ag.Tariff, lf, lt)
-				if err != nil {
-					costErrs = append(costErrs, ag.Tariff.Code+": "+err.Error())
-					l = nil
-				}
-				lookups[key] = l
-				if l != nil && ag.Tariff.DayNight() {
-					assumptions = append(assumptions, "Day/night tariff priced with night hours 00:30 to 07:30 GMT; Economy 7 hours vary by meter.")
-				}
-			}
-			if l == nil {
-				return 0, false
-			}
-			r, ok := l.At(t)
-			return r.IncVAT, ok
-		}
+		pr := newAgreementPricer(ctx, cl, mp, from, to)
+		priceAt := pr.at
 
 		type group struct {
 			start            time.Time
@@ -285,6 +323,7 @@ func registerConsumption(c *Context) {
 			}
 		}
 
+		var costErrs []string
 		rows := make([]Obj, 0, len(groups))
 		for _, g := range groups {
 			row := Obj{"start": groupLabel(g.start, groupBy), units: octopus.Round(g.value, 3)}
@@ -376,6 +415,8 @@ func registerConsumption(c *Context) {
 		if len(readings) == 0 {
 			out["note"] = "No readings for this period. Smart meter data usually arrives the next day; non-smart meters and meters that don't send half-hourly reads have none."
 		}
+		assumptions = append(assumptions, pr.assumptions...)
+		costErrs = append(pr.errs, costErrs...)
 		if len(assumptions) > 0 {
 			out["assumptions"] = unique(assumptions)
 		}
@@ -467,6 +508,8 @@ func registerConsumption(c *Context) {
 		out["readings"] = readings
 		return out, nil
 	})
+
+	registerCompare(c)
 }
 
 func kwhOrNil(o Obj, key string) any {

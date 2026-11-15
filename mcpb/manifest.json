@@ -40,6 +40,10 @@
   },
   "tools": [
     {
+      "name": "octopus_compare_tariffs",
+      "description": "Re-price your actual half-hourly smart meter readings on other Octopus tariffs, such as Agile, Go, Cosy, Tracker, Flux or a fixed deal, and compare them with what the tariffs you were on would have cost: unit costs at each tariff's real rate for every half-hour, plus standing charges, including VAT. Give product codes from octopus_list_products (your meter's region and fuel are used) or full tariff codes. Works for electricity import, export (compares earnings) and gas. These are estimates from past usage, which would change if you shifted it to suit a tariff; they ignore eligibility (Go and Intelligent Go need an EV or charger, Cosy a heat pump), exit fees, discounts and credits. Half-hours a tariff has no rate for (for example before a product existed) are left out and counted."
+    },
+    {
       "name": "octopus_find_cheapest_slots",
       "description": "Find the cheapest time to use electricity on a time-of-use tariff such as Agile: the cheapest continuous block of a given length (for a dishwasher, washing machine, battery or car), runner-up blocks that don't overlap, and the cheapest individual half-hours. Only looks at prices Octopus has published (Agile prices for the next day usually appear around 4pm). Choose the tariff by tariff_code, by product_code with region or postcode, or leave them out for the account's current tariff."
     },
@@ -131,7 +135,7 @@
         "products",
         "days"
       ],
-      "text": "Compare my electricity costs across Octopus tariffs using my real usage over the last 30 days.\n1. octopus_get_account: my region and current electricity import tariff.\n2. octopus_get_consumption (group_by half_hour, include_cost) for the period on my current tariff: the baseline. If there are more than 400 half-hours, fetch day by day or use group_by hour with care.\n3. octopus_list_products to find the current product codes for: Agile, Go, Flexible and the cheapest 12-month fixed.\n4. For each product, octopus_get_unit_rates (product_code and my region) over the same period and octopus_get_standing_charges, then price my half-hourly usage against those rates.\nShow a table: tariff, unit cost, standing charges, total and difference from my current tariff, and the effective pence per kWh. Note eligibility rules (for example Go and Intelligent Go need an EV or charger, Cosy is for heat pumps) and exit fees on my current tariff (octopus_get_product). Make clear these are estimates from past usage. Don't change anything."
+      "text": "Compare my electricity costs across Octopus tariffs using my real usage over the last 30 days.\n1. octopus_get_account: my region and current electricity import tariff.\n2. octopus_list_products to find the current product codes for: Agile, Go, Flexible and the cheapest 12-month fixed.\n3. octopus_compare_tariffs with those product codes, from 30 days ago to yesterday: it re-prices my half-hourly usage on each one and on the tariffs I was actually on.\nShow a table: tariff, unit cost, standing charges, total and difference from my current tariff, and the effective pence per kWh. Note eligibility rules (for example Go and Intelligent Go need an EV or charger, Cosy is for heat pumps) and exit fees on my current tariff (octopus_get_product). Make clear these are estimates from past usage. Don't change anything."
     },
     {
       "name": "ev_charging_check",

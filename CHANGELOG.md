@@ -6,6 +6,10 @@ For octopus-mcp, the "public API" is the set of tool names, their arguments, the
 
 ## [Unreleased]
 
+### Added
+
+- **`octopus_compare_tariffs`** re-prices your actual half-hourly smart meter readings on other tariffs (Agile, Go, Cosy, Tracker, Flux, fixed deals or any product or tariff code) and compares them with the tariffs you were on: unit costs at each half-hour's real rate plus standing charges. Works for electricity import, export (compares earnings) and gas. The `compare_tariffs` prompt uses it.
+
 Fixes from a code review.
 
 ### Breaking changes

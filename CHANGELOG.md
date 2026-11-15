@@ -6,18 +6,20 @@ For octopus-mcp, the "public API" is the set of tool names, their arguments, the
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-15
+
+Four new tools, and fixes from a code review. octopus-mcp now has 26 tools in 6 toolsets (22 read and 4 write) and 5 prompts.
+
+### Breaking changes
+
+- **Breaking:** the `raw` toolset (`octopus_graphql` and `octopus_rest_get`) is no longer enabled by default or by `OCTOPUS_TOOLSETS=all`, because it reaches any GraphQL query or REST path. Name it to keep it, for example `OCTOPUS_TOOLSETS=all,raw`.
+
 ### Added
 
 - **`octopus_compare_tariffs`** re-prices your actual half-hourly smart meter readings on other tariffs (Agile, Go, Cosy, Tracker, Flux, fixed deals or any product or tariff code) and compares them with the tariffs you were on: unit costs at each half-hour's real rate plus standing charges. Works for electricity import, export (compares earnings) and gas. The `compare_tariffs` prompt uses it.
 - **`octopus_get_solar_summary`** puts the import and export meters side by side for homes with solar panels or a battery: kWh imported and exported, import costs and export earnings at each half-hour's real rate, standing charges and the net cost, by day, week or month. Pass `generated_kwh` from your inverter to add self-consumption and self-sufficiency, which Octopus can't see.
 - **`octopus_find_greener_slots`** finds the lowest-carbon times to use electricity over the next 48 hours from NESO's official regional carbon intensity forecast, alongside your tariff's prices: the greenest block of a given length, runner-ups, the greenest half-hours and the cheapest block for comparison. It uses a new upstream host, `api.carbonintensity.org.uk` (public, no credentials), set with the new `OCTOPUS_CARBON_INTENSITY_URL`.
 - **`octopus_plan_schedule`** plans when to charge a home battery or car, or run a heat pump, on Cosy, Flux, Go, Agile and other time-of-use tariffs: it spreads the energy you need over the cheapest half-hours the device's power allows, across every cheap window, merges them into start and stop times, and lists the tariff's price windows and the saving against starting straight away. It plans only; it doesn't change any device.
-
-Fixes from a code review.
-
-### Breaking changes
-
-- **Breaking:** the `raw` toolset (`octopus_graphql` and `octopus_rest_get`) is no longer enabled by default or by `OCTOPUS_TOOLSETS=all`, because it reaches any GraphQL query or REST path. Name it to keep it, for example `OCTOPUS_TOOLSETS=all,raw`.
 
 ### Fixed
 
@@ -136,7 +138,8 @@ First release, not yet tagged. It hasn't yet been tested against a live Octopus 
 - Multi-arch distroless Docker image (`linux/amd64`, `linux/arm64`) published to GHCR on each release, with SBOM and provenance attestation.
 - Documentation, including a tool reference generated from the code, and a website.
 
-[Unreleased]: https://github.com/mattoddie/octopus-mcp/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/mattoddie/octopus-mcp/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/mattoddie/octopus-mcp/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/mattoddie/octopus-mcp/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/mattoddie/octopus-mcp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/mattoddie/octopus-mcp/compare/v0.2.0...v0.3.0

@@ -35,7 +35,9 @@ type Octopus struct {
 	GraphQLURL string
 	// BackendGraphQLURL is Octopus Energy's own GraphQL endpoint, which serves Saving Sessions.
 	BackendGraphQLURL string
-	Timeout           time.Duration
+	// CarbonIntensityURL is NESO's Carbon Intensity API (public, no credentials).
+	CarbonIntensityURL string
+	Timeout            time.Duration
 }
 
 // Tools controls which tools are registered.
@@ -239,6 +241,9 @@ func Load(env Env) (*Config, error) {
 		return nil, err
 	}
 	if o.BackendGraphQLURL, err = checkURL("OCTOPUS_BACKEND_GRAPHQL_URL", or(get("OCTOPUS_BACKEND_GRAPHQL_URL"), "https://api.backend.octopus.energy/v1/graphql/")); err != nil {
+		return nil, err
+	}
+	if o.CarbonIntensityURL, err = checkURL("OCTOPUS_CARBON_INTENSITY_URL", or(get("OCTOPUS_CARBON_INTENSITY_URL"), "https://api.carbonintensity.org.uk")); err != nil {
 		return nil, err
 	}
 	// Octopus answers /v1/graphql with a redirect; keep the trailing slash it expects.

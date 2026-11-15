@@ -543,41 +543,17 @@ func registerTariffs(c *Context) {
 		if len(slots) < n {
 			return nil, fmt.Errorf("only %d half-hours of prices are published between %s and %s, fewer than the %g hours asked for", len(slots), octopus.LocalTime(from), octopus.LocalTime(to), dur)
 		}
-		avgs := make([]float64, len(slots)-n+1)
-		for i := range avgs {
-			sum := 0.0
-			for _, s := range slots[i : i+n] {
-				sum += s.IncVAT
-			}
-			avgs[i] = sum / float64(n)
+		prices := make([]float64, len(slots))
+		for i, s := range slots {
+			prices[i] = s.IncVAT
 		}
-		order := make([]int, len(avgs))
-		for i := range order {
-			order[i] = i
-		}
-		sort.SliceStable(order, func(x, y int) bool { return avgs[order[x]] < avgs[order[y]] })
 		var blocks []Obj
-		var taken []int
-		for _, i := range order {
-			overlaps := false
-			for _, j := range taken {
-				if i < j+n && j < i+n {
-					overlaps = true
-					break
-				}
-			}
-			if overlaps {
-				continue
-			}
-			taken = append(taken, i)
-			b := Obj{"start": octopus.LocalTime(slots[i].From), "end": octopus.LocalTime(slots[i+n-1].To), "average_p_per_kwh": octopus.Round(avgs[i], 2)}
+		for _, b := range bestBlocks(prices, n, 3) {
+			o := Obj{"start": octopus.LocalTime(slots[b.start].From), "end": octopus.LocalTime(slots[b.start+n-1].To), "average_p_per_kwh": octopus.Round(b.avg, 2)}
 			if a.KWh != nil && *a.KWh > 0 {
-				b["estimated_cost_gbp"] = pounds(avgs[i] * *a.KWh)
+				o["estimated_cost_gbp"] = pounds(b.avg * *a.KWh)
 			}
-			blocks = append(blocks, b)
-			if len(blocks) == 3 {
-				break
-			}
+			blocks = append(blocks, o)
 		}
 		out["best_block"] = blocks[0]
 		if len(blocks) > 1 {
@@ -627,6 +603,50 @@ func registerTariffs(c *Context) {
 		}
 		return Obj{"postcode": strings.ToUpper(strings.TrimSpace(a.Postcode)), "region": l, "region_name": octopus.Regions[l], "gsp_group": "_" + l}, nil
 	})
+	registerCarbon(c)
+}
+
+// block is a run of n consecutive values starting at index start, with their average.
+type block struct {
+	start int
+	avg   float64
+}
+
+// bestBlocks finds up to count runs of n consecutive values with the lowest
+// averages that don't overlap each other, lowest first (earliest on a tie).
+func bestBlocks(values []float64, n, count int) []block {
+	if n <= 0 || len(values) < n {
+		return nil
+	}
+	cands := make([]block, len(values)-n+1)
+	sum := 0.0
+	for i, v := range values {
+		sum += v
+		if i >= n {
+			sum -= values[i-n]
+		}
+		if i >= n-1 {
+			cands[i-n+1] = block{start: i - n + 1, avg: sum / float64(n)}
+		}
+	}
+	sort.SliceStable(cands, func(x, y int) bool { return cands[x].avg < cands[y].avg })
+	var out []block
+	for _, c := range cands {
+		overlaps := false
+		for _, b := range out {
+			if c.start < b.start+n && b.start < c.start+n {
+				overlaps = true
+				break
+			}
+		}
+		if !overlaps {
+			out = append(out, c)
+			if len(out) == count {
+				break
+			}
+		}
+	}
+	return out
 }
 
 // averageRate is the time-weighted average unit rate (p/kWh) over [from, to),

@@ -276,3 +276,13 @@ func TestAuditLog(t *testing.T) {
 		t.Error("a directory was accepted")
 	}
 }
+
+func TestCarbonIntensityURL(t *testing.T) {
+	cfg, err := Load(MapEnv(map[string]string{"OCTOPUS_API_KEY": key}))
+	if err != nil || cfg.Octopus.CarbonIntensityURL != "https://api.carbonintensity.org.uk" {
+		t.Errorf("default: %v %v", cfg, err)
+	}
+	if _, err := Load(MapEnv(map[string]string{"OCTOPUS_API_KEY": key, "OCTOPUS_CARBON_INTENSITY_URL": "http://api.carbonintensity.org.uk"})); err == nil || !strings.Contains(err.Error(), "https://") {
+		t.Errorf("plain http accepted: %v", err)
+	}
+}

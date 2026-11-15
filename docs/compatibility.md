@@ -9,6 +9,7 @@ octopus-mcp is an independent, unofficial project. It isn't made, endorsed or su
 | REST API v1 | `https://api.octopus.energy/v1/` | Products, tariffs, unit rates, standing charges and regions (public); your account and meter readings (with the API key). [Octopus's documentation](https://docs.octopus.energy/rest/guides/endpoints). |
 | Kraken GraphQL API | `https://api.octopus.energy/v1/graphql/` | Kraken tokens, balance, bills, transactions, smart meter device details, Home Mini telemetry, Intelligent Octopus devices and dispatches, Octoplus points. [Octopus's GraphQL guide](https://docs.octopus.energy/graphql/guides/basics). |
 | Octopus Energy backend GraphQL API | `https://api.backend.octopus.energy/v1/graphql/` | Saving Sessions (joining, weekend happy hours and results). |
+| NESO Carbon Intensity API (not Octopus) | `https://api.carbonintensity.org.uk/` | The regional carbon intensity forecast for `octopus_find_greener_slots` (`/regional/intensity/{from}/fw48h/regionid/{id}`). Public, no credentials, [CC BY 4.0](https://carbon-intensity.github.io/api-definitions/). Great Britain only. |
 
 The GraphQL operations octopus-mcp uses were checked against the live schemas (which can be explored at the addresses above) when it was written, and avoid fields Octopus has marked deprecated. Kraken announces deprecations in the schema with a removal date. If Octopus removes or renames something, the affected tool returns Octopus's error and the rest keep working.
 
@@ -58,7 +59,7 @@ The `raw` tools can reach anything in the APIs in the meantime (enable them with
 | Docker image | `linux/amd64` or `linux/arm64` (for example Raspberry Pi 4/5) |
 | Go (to build without Docker) | 1.26 or later |
 | Operating system for the binary | Linux and macOS. Windows should work, but isn't tested. |
-| Network | Outbound HTTPS to `api.octopus.energy` and `api.backend.octopus.energy` |
+| Network | Outbound HTTPS to `api.octopus.energy`, `api.backend.octopus.energy` and `api.carbonintensity.org.uk` (for `octopus_find_greener_slots`) |
 | MCP clients | Any client supporting Streamable HTTP or stdio. See [Connecting MCP clients](clients.md). |
 
 The server is built on the official [MCP Go SDK](https://github.com/modelcontextprotocol/go-sdk) and supports tools, prompts and tool annotations.

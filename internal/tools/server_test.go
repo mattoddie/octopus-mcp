@@ -70,7 +70,7 @@ func TestToolsetsFilter(t *testing.T) {
 	o.Toolsets = map[string]bool{"tariffs": true}
 	env := newEnv(t, o)
 	names := toolNames(t, env.session)
-	if len(names) != 6 {
+	if len(names) != 7 {
 		t.Errorf("tariffs toolset: %d tools", len(names))
 	}
 	for name := range names {

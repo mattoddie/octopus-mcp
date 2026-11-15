@@ -25,7 +25,7 @@ Once the server is connected, just talk to your assistant about your energy. Thi
 
 - *"How much electricity did I use yesterday, hour by hour?"* (`octopus_get_consumption`)
 - *"What did my gas cost last month?"*
-- *"How much did my solar panels export this week, and what did Octopus pay me?"*
+- *"How much did my solar panels export this week, and what did Octopus pay me? What was my net cost?"* (`octopus_get_solar_summary`)
 - *"What's the house drawing right now?"* (`octopus_get_live_usage`, needs a Home Mini)
 
 **Prices**
@@ -33,7 +33,8 @@ Once the server is connected, just talk to your assistant about your energy. Thi
 - *"What are the Agile prices for tomorrow evening?"* (`octopus_get_unit_rates`)
 - *"When's the cheapest 3-hour window overnight to charge the battery?"* (`octopus_find_cheapest_slots`)
 - *"How much is the standing charge on the Octopus 12M Fixed in London?"* (`octopus_get_product`)
-- *"Would Agile have been cheaper than Flexible for me last month?"*
+- *"Would Agile have been cheaper than Flexible for me last month?"* (`octopus_compare_tariffs`)
+- *"When's the greenest time to run the washing machine tomorrow, and what would it cost?"* (`octopus_find_greener_slots`)
 
 **EV charging and rewards**
 

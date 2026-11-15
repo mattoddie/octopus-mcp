@@ -24,7 +24,7 @@ Run `docker compose logs octopus-mcp`. The last line names the problem, for exam
 | `OCTOPUS_ALLOW_WRITES must be true or false, got "…"` | Fix the value. Booleans accept `true`/`false`, `1`/`0`, `yes`/`no` and `on`/`off`. |
 | `unknown toolset "x" in OCTOPUS_TOOLSETS; valid: …` | Fix the typo. The message lists the valid names. |
 | `MCP_TRANSPORT must be stdio or http, got "…"` | Fix the value. |
-| `OCTOPUS_API_URL must use https:// (http:// is only allowed for localhost), got …` | Use an `https://` URL, or remove the variable to use the default. The same applies to `OCTOPUS_GRAPHQL_URL` and `OCTOPUS_BACKEND_GRAPHQL_URL`. |
+| `OCTOPUS_API_URL must use https:// (http:// is only allowed for localhost), got …` | Use an `https://` URL, or remove the variable to use the default. The same applies to `OCTOPUS_GRAPHQL_URL`, `OCTOPUS_BACKEND_GRAPHQL_URL` and `OCTOPUS_CARBON_INTENSITY_URL`. |
 | `… must not contain a user name or password` | Remove `user:password@` from the URL. The API key goes in `OCTOPUS_API_KEY`. |
 | `MCP_AUTH_TOKEN must be at least 16 characters` | Use a longer token, for example from `openssl rand -hex 32`. |
 | `MCP_ALLOW_UNAUTHENTICATED=true needs MCP_ALLOWED_HOSTS` | Set `MCP_ALLOWED_HOSTS` to the host names clients use, or set `MCP_AUTH_TOKEN` instead. |

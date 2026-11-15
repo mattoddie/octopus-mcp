@@ -68,7 +68,7 @@ Many APIs let you create a read-only key. Octopus doesn't: the API key can do ev
 - Publish the port only where it's needed: on a LAN address, or on `127.0.0.1` behind a reverse proxy.
 - **Never expose port 8080 directly to the internet.** If traffic crosses a network you don't trust, put TLS in front of it. See [Deployment](deployment.md#tls-with-a-reverse-proxy). Prefer a VPN to a public endpoint.
 - Set `MCP_ALLOWED_HOSTS` to the hostname clients use.
-- The server only needs outbound HTTPS to `api.octopus.energy` and `api.backend.octopus.energy`. If your firewall allows, restrict it to those.
+- The server only needs outbound HTTPS to `api.octopus.energy`, `api.backend.octopus.energy` and `api.carbonintensity.org.uk` (for `octopus_find_greener_slots`). If your firewall allows, restrict it to those.
 
 ## Checklist
 

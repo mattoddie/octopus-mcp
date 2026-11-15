@@ -328,6 +328,28 @@ func (c *Client) GetPages(ctx context.Context, path string, q url.Values, auth b
 	return page, nil
 }
 
+// ---------------------------------------------------------------- carbon intensity
+
+// CarbonIntensity fetches a path of NESO's public Carbon Intensity API
+// (https://api.carbonintensity.org.uk) into out. No credentials are sent; the
+// request gets the same treatment as Octopus's: no redirects, a size cap and
+// retries only for this GET.
+func (c *Client) CarbonIntensity(ctx context.Context, path string, out any) error {
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	data, err := c.do(ctx, http.MethodGet, c.cfg.CarbonIntensityURL+path, nil, func(*http.Request) {})
+	if err != nil {
+		return err
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	if err := dec.Decode(out); err != nil {
+		return fmt.Errorf("GET %s: unexpected response from the Carbon Intensity API: %w", path, err)
+	}
+	return nil
+}
+
 // ---------------------------------------------------------------- GraphQL
 
 // GraphQL runs an authenticated query or mutation on the Kraken API and decodes "data" into out.
@@ -666,7 +688,7 @@ func errorMessage(status int, data []byte) string {
 func hint(status int, u string) string {
 	switch {
 	case status/100 == 3:
-		return " Octopus redirected the request, and redirects aren't followed so that credentials only go to the configured URLs. Check OCTOPUS_API_URL, OCTOPUS_GRAPHQL_URL and OCTOPUS_BACKEND_GRAPHQL_URL."
+		return " Octopus redirected the request, and redirects aren't followed so that credentials only go to the configured URLs. Check OCTOPUS_API_URL, OCTOPUS_GRAPHQL_URL, OCTOPUS_BACKEND_GRAPHQL_URL and OCTOPUS_CARBON_INTENSITY_URL."
 	case status == http.StatusUnauthorized:
 		return " Octopus rejected the API key. Check OCTOPUS_API_KEY is the current key from your Octopus dashboard (Personal details → API access)."
 	case status == http.StatusForbidden || (status == http.StatusNotFound && strings.Contains(u, "/v1/accounts/")):

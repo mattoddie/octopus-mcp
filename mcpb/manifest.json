@@ -48,6 +48,10 @@
       "description": "Find the cheapest time to use electricity on a time-of-use tariff such as Agile: the cheapest continuous block of a given length (for a dishwasher, washing machine, battery or car), runner-up blocks that don't overlap, and the cheapest individual half-hours. Only looks at prices Octopus has published (Agile prices for the next day usually appear around 4pm). Choose the tariff by tariff_code, by product_code with region or postcode, or leave them out for the account's current tariff."
     },
     {
+      "name": "octopus_find_greener_slots",
+      "description": "Find the lowest-carbon times to use electricity in your region over the next 48 hours, from the official regional carbon intensity forecast of NESO (Great Britain's electricity system operator, api.carbonintensity.org.uk), alongside your tariff's prices: the greenest continuous block of a given length, runner-up blocks, the greenest half-hours, the cheapest block for comparison, and the intensity now. Intensity is grams of CO2 per kWh of electricity generated in the region (a forecast), with NESO's index from very low to very high. The region comes from the tariff, or from region or postcode on their own (then without prices). Choose the tariff by tariff_code, by product_code with region or postcode, or leave them out for the account's current tariff. Northern Ireland isn't covered."
+    },
+    {
       "name": "octopus_find_region",
       "description": "Find which of the 14 electricity regions (A to P) a UK postcode is in. Tariff prices differ by region, and tariff codes end with the region letter. Public data; no account needed."
     },

@@ -158,7 +158,7 @@ services:
     ports: ["127.0.0.1:8080:8080"]
 ```
 
-The server only needs outbound HTTPS to `api.octopus.energy` and `api.backend.octopus.energy`. See [Security](security.md) for choosing settings and toolsets.
+The server only needs outbound HTTPS to `api.octopus.energy`, `api.backend.octopus.energy` and `api.carbonintensity.org.uk` (for `octopus_find_greener_slots`). See [Security](security.md) for choosing settings and toolsets.
 
 ## Running without Docker
 

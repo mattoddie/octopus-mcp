@@ -175,3 +175,30 @@ func TestRejectedAPIKeyBacksOff(t *testing.T) {
 		t.Errorf("no retry after the backoff: %d token requests", m.TokenRequests)
 	}
 }
+
+// The Carbon Intensity API gets the same rules as Octopus: no credentials, and
+// redirects are reported rather than followed.
+func TestCarbonIntensityRequests(t *testing.T) {
+	var auth []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth = append(auth, r.Header.Get("Authorization"))
+		if r.URL.Path == "/moved" {
+			http.Redirect(w, r, "/regional", http.StatusFound)
+			return
+		}
+		w.Write([]byte(`{"data": {"regionid": 13}}`))
+	}))
+	defer srv.Close()
+	cl := octopus.New(config.Octopus{APIKey: octopustest.APIKey, CarbonIntensityURL: srv.URL, Timeout: 5 * time.Second})
+	var out octopus.Obj
+	if err := cl.CarbonIntensity(context.Background(), "/regional", &out); err != nil || octopus.Str(out, "data", "regionid") != "13" {
+		t.Fatalf("got %v, %v", out, err)
+	}
+	err := cl.CarbonIntensity(context.Background(), "/moved", &out)
+	if err == nil || !strings.Contains(err.Error(), "redirect") {
+		t.Errorf("redirect: %v", err)
+	}
+	if len(auth) != 2 || auth[0] != "" || auth[1] != "" {
+		t.Errorf("credentials sent: %q", auth)
+	}
+}

@@ -58,8 +58,9 @@ type gqlRoute struct {
 	fn      GraphQLHandler
 }
 
-// Mock serves REST under /v1, the Kraken GraphQL API at /v1/graphql/ and the
-// backend GraphQL API at /backend/v1/graphql/. Account-specific REST paths need
+// Mock serves REST under /v1, the Kraken GraphQL API at /v1/graphql/, the
+// backend GraphQL API at /backend/v1/graphql/ and the Carbon Intensity API
+// under /carbon (routes added with On match paths starting /carbon/). Account-specific REST paths need
 // HTTP Basic auth with APIKey; GraphQL needs a token from obtainKrakenToken.
 type Mock struct {
 	Server *httptest.Server
@@ -89,11 +90,12 @@ func New() *Mock {
 // Config returns settings pointing at the mock.
 func (m *Mock) Config() config.Octopus {
 	return config.Octopus{
-		APIKey:            APIKey,
-		APIURL:            m.Server.URL,
-		GraphQLURL:        m.Server.URL + "/v1/graphql/",
-		BackendGraphQLURL: m.Server.URL + "/backend/v1/graphql/",
-		Timeout:           5 * time.Second,
+		APIKey:             APIKey,
+		APIURL:             m.Server.URL,
+		GraphQLURL:         m.Server.URL + "/v1/graphql/",
+		BackendGraphQLURL:  m.Server.URL + "/backend/v1/graphql/",
+		CarbonIntensityURL: m.Server.URL + "/carbon",
+		Timeout:            5 * time.Second,
 	}
 }
 
@@ -184,7 +186,7 @@ func (m *Mock) serve(w http.ResponseWriter, r *http.Request) {
 		m.graphql(w, r, "main")
 	case r.URL.Path == "/backend/v1/graphql/":
 		m.graphql(w, r, "backend")
-	case strings.HasPrefix(r.URL.Path, "/v1/"):
+	case strings.HasPrefix(r.URL.Path, "/v1/"), strings.HasPrefix(r.URL.Path, "/carbon/"):
 		m.rest(w, r)
 	default:
 		http.NotFound(w, r)

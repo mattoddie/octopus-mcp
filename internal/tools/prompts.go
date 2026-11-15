@@ -47,7 +47,7 @@ Report: total kWh and estimated cost (unit costs and standing charges) for each 
 		text: func(a map[string]string) string {
 			return fmt.Sprintf(`I want to run this as cheaply as possible on my Octopus tariff: %s. Deadline: %s.
 1. octopus_get_account to find my electricity import tariff (skip if you already know it).
-2. octopus_find_cheapest_slots with duration_hours and kwh from the job (ask me if they aren't clear) and to set to the deadline.
+2. octopus_find_cheapest_slots with duration_hours and kwh from the job (ask me if they aren't clear) and to set to the deadline. For a job that can stop and start, such as charging a battery or car or running a heat pump, use octopus_plan_schedule with energy_kwh and power_kw instead, which spreads it over every cheap window.
 3. If the tariff is flat-rate, say so: timing won't save money (except during Saving Sessions; check octopus_get_saving_sessions).
 Tell me the best start time in UK time, the expected cost and how that compares with running it now, plus the runner-up times. Mention any negative-price periods. Don't change anything.`, a["job"], or(a["deadline"], "none"))
 		},

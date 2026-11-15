@@ -35,6 +35,7 @@ Once the server is connected, just talk to your assistant about your energy. Thi
 - *"How much is the standing charge on the Octopus 12M Fixed in London?"* (`octopus_get_product`)
 - *"Would Agile have been cheaper than Flexible for me last month?"* (`octopus_compare_tariffs`)
 - *"When's the greenest time to run the washing machine tomorrow, and what would it cost?"* (`octopus_find_greener_slots`)
+- *"I'm on Cosy. When should the heat pump run tomorrow to use about 12 kWh at 3 kW?"* (`octopus_plan_schedule`)
 
 **EV charging and rewards**
 

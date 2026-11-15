@@ -144,7 +144,7 @@ If both `NAME` and `NAME_FILE` are set, the file wins.
 
 ## Keeping the tool list small
 
-Most MCP clients send every tool's name, description and argument schema to the model with each request. With the default toolsets that's about 28 KB for the 19 read-only tools, and 32 KB for 23 tools with writes on (30 KB and 34 KB with `raw` added as well). That uses up context you'd rather spend on your conversation and your energy data, and some clients warn about or cap the number of tools.
+Most MCP clients send every tool's name, description and argument schema to the model with each request. With the default toolsets that's about 31 KB for the 20 read-only tools, and 35 KB for 24 tools with writes on (33 KB and 37 KB with `raw` added as well). That uses up context you'd rather spend on your conversation and your energy data, and some clients warn about or cap the number of tools.
 
 `OCTOPUS_TOOLSETS` is the way to keep the list small. Enable only the toolsets you need: the model sees fewer tools, picks the right one more easily, and can't reach the rest at all.
 
@@ -156,7 +156,7 @@ Clients with their own tool search, such as Claude Code, load tool definitions o
 |---|---|
 | `account` | The account overview (meters, tariffs), balance, bills and transactions. **Almost always include it**: other tools use it to find your meters and tariff. |
 | `consumption` | Smart meter readings with cost estimates, comparing tariffs on your real usage, solar import and export summaries, and live demand from a Home Mini |
-| `tariffs` | Products, prices, Agile and other half-hourly rates, standing charges, cheapest times, the greenest (lowest-carbon) times, regions. Works without account data. |
+| `tariffs` | Products, prices, Agile and other half-hourly rates, standing charges, cheapest times, the greenest (lowest-carbon) times, schedules for batteries, heat pumps and cars, regions. Works without account data. |
 | `intelligent` | Intelligent Octopus cars and chargers: status, charging slots and, with writes, settings |
 | `octoplus` | Octoplus points and Saving Sessions |
 | `raw` | Any GraphQL query or REST path. Handy, but gives broad access, so it's **opt-in**: `all` doesn't include it, and it's only enabled when named, for example `OCTOPUS_TOOLSETS=all,raw`. |
@@ -169,13 +169,13 @@ The sizes are the length of the server's `tools/list` response. They change a li
 
 | Goal | `OCTOPUS_TOOLSETS` | Read-only | With writes |
 |---|---|---|---|
-| Everything except raw access (default) | `all` | 19 tools, 28.0 KB | 23 tools, 32.3 KB |
-| Everything, including raw access | `all,raw` | 21 tools, 29.9 KB | 25 tools, 34.3 KB |
-| Usage and bills | `account,consumption,tariffs` | 15 tools, 24.4 KB | 15 tools, 24.4 KB |
-| Agile price watching | `account,tariffs` | 11 tools, 15.4 KB | 11 tools, 15.4 KB |
-| EV charging on Intelligent Octopus Go | `account,tariffs,intelligent` | 13 tools, 17.5 KB | 16 tools, 21.0 KB |
-| Usage, bills and EV charging | `account,consumption,tariffs,intelligent` | 17 tools, 26.4 KB | 20 tools, 29.9 KB |
-| Saving Sessions helper | `account,consumption,tariffs,octoplus` | 17 tools, 25.9 KB | 18 tools, 26.8 KB |
+| Everything except raw access (default) | `all` | 20 tools, 30.7 KB | 24 tools, 35.0 KB |
+| Everything, including raw access | `all,raw` | 22 tools, 32.6 KB | 26 tools, 37.0 KB |
+| Usage and bills | `account,consumption,tariffs` | 16 tools, 27.1 KB | 16 tools, 27.1 KB |
+| Agile price watching | `account,tariffs` | 12 tools, 18.1 KB | 12 tools, 18.1 KB |
+| EV charging on Intelligent Octopus Go | `account,tariffs,intelligent` | 14 tools, 20.2 KB | 17 tools, 23.7 KB |
+| Usage, bills and EV charging | `account,consumption,tariffs,intelligent` | 18 tools, 29.1 KB | 21 tools, 32.6 KB |
+| Saving Sessions helper | `account,consumption,tariffs,octoplus` | 18 tools, 28.6 KB | 19 tools, 29.5 KB |
 
 Each toolset on its own:
 
@@ -183,7 +183,7 @@ Each toolset on its own:
 |---|---|---|
 | `account` | 4 tools, 3.7 KB | 4 tools, 3.7 KB |
 | `consumption` | 4 tools, 9.0 KB | 4 tools, 9.0 KB |
-| `tariffs` | 7 tools, 11.7 KB | 7 tools, 11.7 KB |
+| `tariffs` | 8 tools, 14.4 KB | 8 tools, 14.4 KB |
 | `intelligent` | 2 tools, 2.1 KB | 5 tools, 5.6 KB |
 | `octoplus` | 2 tools, 1.5 KB | 3 tools, 2.4 KB |
 | `raw` | 2 tools, 1.9 KB | 2 tools, 2.0 KB |

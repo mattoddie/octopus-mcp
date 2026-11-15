@@ -114,6 +114,10 @@
     {
       "name": "octopus_list_transactions",
       "description": "List the account's transactions, newest first: charges for energy, payments (such as direct debits), credits (such as Octoplus rewards or Saving Session payouts) and refunds, in pounds, with the balance after each."
+    },
+    {
+      "name": "octopus_plan_schedule",
+      "description": "Plan when to charge a home battery or car, or run a heat pump, so that a given amount of energy goes in as cheaply as possible on a time-of-use tariff such as Cosy, Flux, Go, Intelligent Go or Agile. Unlike octopus_find_cheapest_slots, which finds one continuous block, this spreads the energy over the cheapest half-hours the device's power allows, across every cheap window in the period, and merges them into start and stop times. Also lists the tariff's price windows over the period (for example Cosy's three cheap windows and its peak) and compares the cost with starting straight away. It only plans; it doesn't change any device. Only uses published prices. Choose the tariff by tariff_code, by product_code with region or postcode, or leave them out for the account's current tariff."
     }
   ],
   "tools_generated": true,
@@ -134,7 +138,7 @@
         "job",
         "deadline"
       ],
-      "text": "I want to run this as cheaply as possible on my Octopus tariff: ${arguments.job}. Deadline: none.\n1. octopus_get_account to find my electricity import tariff (skip if you already know it).\n2. octopus_find_cheapest_slots with duration_hours and kwh from the job (ask me if they aren't clear) and to set to the deadline.\n3. If the tariff is flat-rate, say so: timing won't save money (except during Saving Sessions; check octopus_get_saving_sessions).\nTell me the best start time in UK time, the expected cost and how that compares with running it now, plus the runner-up times. Mention any negative-price periods. Don't change anything."
+      "text": "I want to run this as cheaply as possible on my Octopus tariff: ${arguments.job}. Deadline: none.\n1. octopus_get_account to find my electricity import tariff (skip if you already know it).\n2. octopus_find_cheapest_slots with duration_hours and kwh from the job (ask me if they aren't clear) and to set to the deadline. For a job that can stop and start, such as charging a battery or car or running a heat pump, use octopus_plan_schedule with energy_kwh and power_kw instead, which spreads it over every cheap window.\n3. If the tariff is flat-rate, say so: timing won't save money (except during Saving Sessions; check octopus_get_saving_sessions).\nTell me the best start time in UK time, the expected cost and how that compares with running it now, plus the runner-up times. Mention any negative-price periods. Don't change anything."
     },
     {
       "name": "compare_tariffs",

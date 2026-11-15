@@ -27,7 +27,7 @@ An open-source [Model Context Protocol](https://modelcontextprotocol.io) server 
 > **"How much did I spend on electricity last week, and when should I run the dishwasher tonight?"**
 > *Last week you used 58.4 kWh for £11.92, including £2.66 of standing charges, an average of 15.9p/kWh on Agile. Wednesday was the priciest day: you used 4.1 kWh between 4pm and 7pm, when prices were over 30p. Tonight the cheapest two hours are 01:30 to 03:30 at an average of 7.8p/kWh, so a 1.5 kWh dishwasher cycle would cost about 12p, against 46p if you started it now.*
 
-Ask about your energy in plain English. The assistant picks from **23 tools** to look things up and, if you allow it, make changes. Some examples:
+Ask about your energy in plain English. The assistant picks from **24 tools** to look things up and, if you allow it, make changes. Some examples:
 
 - 📊 *"Give me a report on my energy use for September."*
 - ⚡ *"What are the Agile prices for tomorrow? Any negative ones?"*
@@ -96,7 +96,7 @@ Octopus API keys can't be limited to read-only, so this switch, enforced by octo
 | Toolset | What's covered |
 |---|---|
 | `account` | The account overview (properties, MPAN/MPRN, meter serials, smart meter device IDs, current tariffs), balance, bills and transactions |
-| `consumption` | Smart meter usage for electricity import and export and gas, by half-hour, hour, day, week or month, with cost estimates; what your real usage would have cost on other tariffs; live demand from a Home Mini |
+| `consumption` | Smart meter usage for electricity import and export and gas, by half-hour, hour, day, week or month, with cost estimates; what your real usage would have cost on other tariffs; solar and export summaries with net cost and self-consumption; live demand from a Home Mini |
 | `tariffs` | Products on sale, prices by region, half-hourly unit rates (Agile, Go and more), standing charges, the cheapest times to use electricity, region by postcode. No account needed |
 | `intelligent` | Intelligent Octopus cars and chargers: status, schedule, planned and completed charging slots; with writes, target and ready-by time, bump charge, smart control |
 | `octoplus` | Octoplus points, Saving Sessions with rewards and results; with writes, joining a session |

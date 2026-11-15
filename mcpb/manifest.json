@@ -84,6 +84,10 @@
       "description": "Get Octoplus Saving Sessions (and turn-up and weekend happy hour sessions): upcoming sessions for your region with their start and end times, the OctoPoints reward per kWh, whether you've joined each one and the code to join it; whether you've signed up to the campaign; your points balance; and results of past sessions you took part in."
     },
     {
+      "name": "octopus_get_solar_summary",
+      "description": "Combine a home's electricity import and export smart meters (for solar panels or a battery) over a period: kWh imported and exported, what the imports cost and the exports earned at the actual rate for every half-hour (so Agile Outgoing and other time-of-use export tariffs are priced correctly), standing charges and the net cost, by day, week or month. Octopus has no generation data, so to get self-consumption (generation minus export) and self-sufficiency, pass generated_kwh from your inverter app. Readings are usually a day behind. Estimates exclude discounts and credits; your bill is the source of truth."
+    },
+    {
       "name": "octopus_get_standing_charges",
       "description": "Get a tariff's daily standing charge (pence per day, including VAT): the current charge and how it has changed over a period. Choose the tariff by tariff_code, by product_code with region or postcode, or leave them out for the account's current tariff."
     },
@@ -117,7 +121,7 @@
         "from",
         "to"
       ],
-      "text": "Give me a report on my Octopus Energy use from 30 days ago to yesterday.\n1. octopus_get_account: properties, meter points and current tariffs (which tell you whether I'm on a time-of-use tariff like Agile, Go or Intelligent Go).\n2. octopus_get_consumption for electricity import, group_by day, for the period; and for gas if I have it, and electricity export if I have solar.\n3. octopus_get_consumption again with group_by hour for the last 7 days of the period, to see what time of day I use most.\nReport: total kWh and estimated cost (unit costs and standing charges) for each fuel, average pence per kWh, the most expensive days and hours, how much of my electricity fell in peak versus off-peak times if I'm on a time-of-use tariff, and three practical, specific ideas to cut the bill. Mention any gaps in the data and any assumptions the tools flagged (like gas units). Use GBP. Don't change anything."
+      "text": "Give me a report on my Octopus Energy use from 30 days ago to yesterday.\n1. octopus_get_account: properties, meter points and current tariffs (which tell you whether I'm on a time-of-use tariff like Agile, Go or Intelligent Go).\n2. octopus_get_consumption for electricity import, group_by day, for the period, and for gas if I have it. If I have an export meter (solar or a battery), octopus_get_solar_summary for imports, exports and the net cost.\n3. octopus_get_consumption again with group_by hour for the last 7 days of the period, to see what time of day I use most.\nReport: total kWh and estimated cost (unit costs and standing charges) for each fuel, average pence per kWh, the most expensive days and hours, how much of my electricity fell in peak versus off-peak times if I'm on a time-of-use tariff, and three practical, specific ideas to cut the bill. Mention any gaps in the data and any assumptions the tools flagged (like gas units). Use GBP. Don't change anything."
     },
     {
       "name": "plan_cheap_usage",

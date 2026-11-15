@@ -510,6 +510,7 @@ func registerConsumption(c *Context) {
 	})
 
 	registerCompare(c)
+	registerSolar(c)
 }
 
 func kwhOrNil(o Obj, key string) any {

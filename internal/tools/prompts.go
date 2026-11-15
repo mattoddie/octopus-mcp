@@ -32,7 +32,7 @@ var prompts = []prompt{
 		text: func(a map[string]string) string {
 			return fmt.Sprintf(`Give me a report on my Octopus Energy use from %s to %s.
 1. octopus_get_account: properties, meter points and current tariffs (which tell you whether I'm on a time-of-use tariff like Agile, Go or Intelligent Go).
-2. octopus_get_consumption for electricity import, group_by day, for the period; and for gas if I have it, and electricity export if I have solar.
+2. octopus_get_consumption for electricity import, group_by day, for the period, and for gas if I have it. If I have an export meter (solar or a battery), octopus_get_solar_summary for imports, exports and the net cost.
 3. octopus_get_consumption again with group_by hour for the last 7 days of the period, to see what time of day I use most.
 Report: total kWh and estimated cost (unit costs and standing charges) for each fuel, average pence per kWh, the most expensive days and hours, how much of my electricity fell in peak versus off-peak times if I'm on a time-of-use tariff, and three practical, specific ideas to cut the bill. Mention any gaps in the data and any assumptions the tools flagged (like gas units). Use GBP. Don't change anything.`, or(a["from"], "30 days ago"), or(a["to"], "yesterday"))
 		},

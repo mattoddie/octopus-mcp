@@ -129,6 +129,43 @@ func TestRawREST(t *testing.T) {
 	}
 }
 
+// A /v1 prefix used to be removed by the tool and again when the URL was built,
+// so /v1/v1/graphql passed the GraphQL check and reached GET /v1/graphql/.
+func TestRawRESTRefusesGraphQLBehindV1(t *testing.T) {
+	env := newEnv(t)
+	for _, p := range []string{"/v1/v1/graphql", "/v1/v1/graphql/", "/v1/graphql", "/V1/GraphQL/", "/v1/%2Fv1/graphql", "/products/graphql/"} {
+		if msg := env.callErr("octopus_rest_get", map[string]any{"path": p}); !strings.Contains(msg, "path must") {
+			t.Errorf("%s: %s", p, msg)
+		}
+	}
+	if n := len(env.mock.Requests()); n != 0 {
+		t.Errorf("refused paths reached Octopus: %v", env.mock.Requests())
+	}
+	// /v1 is removed once only, so the path requested is the path checked.
+	env.mock.On("GET", "/v1/products/", octopustest.JSON(Obj{"doubled": true}))
+	env.mock.On("GET", "/products/", octopustest.JSON(Obj{"doubled": false}))
+	if res := env.obj("octopus_rest_get", map[string]any{"path": "/v1/v1/products/"}); res["doubled"] != true {
+		t.Errorf("/v1/v1/products/ was normalised twice: %v", res)
+	}
+}
+
+// Successful responses are scrubbed of the API key and tokens too, not just errors.
+func TestRawRESTRedactsSecretsInData(t *testing.T) {
+	env := newEnv(t)
+	env.mock.On("GET", "/products/", octopustest.JSON(Obj{"echo": "key " + octopustest.APIKey + " here"}))
+	res := env.raw("octopus_rest_get", map[string]any{"path": "/products/"})
+	if out := text(res); strings.Contains(out, octopustest.APIKey) || !strings.Contains(out, "[redacted]") {
+		t.Errorf("API key in output: %s", out)
+	}
+	env.mock.OnGraphQL(`query Echo`, func(r octopustest.GraphQLRequest) (any, []any) {
+		return Obj{"echo": "token " + r.Token, octopustest.APIKey: 1}, nil
+	})
+	res = env.raw("octopus_graphql", map[string]any{"query": `query Echo { echo }`})
+	if out := text(res); strings.Contains(out, octopustest.APIKey) || strings.Contains(out, "eyJ") || !strings.Contains(out, "[redacted]") {
+		t.Errorf("secrets in GraphQL output: %s", out)
+	}
+}
+
 func TestRawRESTRejectsDoubleEncoding(t *testing.T) {
 	env := newEnv(t)
 	for _, p := range []string{"/%252e%252e/graphql/", "/products/%2525", "/%2e%2e/graphql/", "/GraphQL/", "/products/.", "/products/%0aX"} {

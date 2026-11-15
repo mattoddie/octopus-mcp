@@ -25,12 +25,12 @@ The best defence is to limit what's possible, not to rely on the model behaving.
 | Layer | Setting | What it does |
 |---|---|---|
 | Write switch | `OCTOPUS_ALLOW_WRITES` (off by default) | When off, no tools that change anything are registered, and the raw GraphQL tool only sends documents whose every operation is a query. It reads documents with a GraphQL lexer that follows the specification (commas, a byte order mark and comments are ignored as GraphQL ignores them), and refuses anything it can't read. Subscriptions are always refused. |
-| Toolsets | `OCTOPUS_TOOLSETS` | Tools outside the listed toolsets don't exist. The model can't see or call them. |
+| Toolsets | `OCTOPUS_TOOLSETS` | Tools outside the listed toolsets don't exist. The model can't see or call them. The `raw` toolset (any GraphQL query or REST path) is opt-in: the default, `all`, leaves it out, and it's only enabled when named. |
 | Secret-handling operations | Built in | The raw GraphQL tool always refuses a document that names anything to do with tokens, API keys or passwords (such as `obtainKrakenToken` or `regenerateSecretKey`), whether writes are on or off. |
 | Tool annotations | Built in | Each tool is marked read-only or not. Bump charges and suspending smart charging are marked open-world because they affect a real car, so MCP clients can ask for your confirmation. |
 | Audit log | `OCTOPUS_AUDIT_LOG` (off by default) | Appends a JSON line for every call of a tool that changes things, and every raw GraphQL mutation, with secret-looking arguments redacted. It records what happened; it doesn't prevent anything. See [Audit log](configuration.md#audit-log). |
 | Server instructions | Built in | With writes on, the model is told to confirm EV changes and joining Saving Sessions with you first. This helps, but it isn't a security boundary. |
-| No secret output | Built in | No tool returns the API key or a Kraken token. Error messages, including the details Octopus adds to GraphQL errors, are scrubbed of the key and of current and recent tokens. Public tariff requests don't send the key at all. |
+| No secret output | Built in | No tool returns the API key or a Kraken token. Every response from Octopus, successful or not, is scrubbed of the key and of current and recent tokens before a tool sees it, as are error messages (including the details Octopus adds to GraphQL errors) and audit log entries. Public tariff requests don't send the key at all. |
 | No redirects, https only | Built in | Requests to Octopus never follow redirects, so the key and tokens only go to the configured URLs, and paged results are always fetched from the configured host. The API URLs must be `https://` (plain `http://` only for localhost) and can't contain a user name or password. A POST that Octopus answers with 503 isn't retried, so a mutation is never sent twice. |
 | Endpoint auth | `MCP_AUTH_TOKEN` | Bearer token required on every request, checked in constant time. The http transport refuses to start without one, or with one shorter than 16 characters. |
 | Host and Origin allow-list | `MCP_ALLOWED_HOSTS` | Rejects requests with an unexpected `Host` header, or with an `Origin` header (sent by browsers) that isn't on the list. This blocks DNS-rebinding and cross-site attacks from browser pages. Required when running without a token. `/mcp` only accepts `POST` with a JSON body of up to 4 MiB. |
@@ -38,7 +38,7 @@ The best defence is to limit what's possible, not to rely on the model behaving.
 
 ### Why the switch matters more than usual
 
-Many APIs let you create a read-only key. Octopus doesn't: the API key can do everything your login can through the API. So `OCTOPUS_ALLOW_WRITES` is enforced by octopus-mcp, not by Octopus. It still means a lot, because the model can only call tools that exist, but a bug in octopus-mcp, or a raw GraphQL query if you enable `raw`, is the only thing between the model and those changes. Keep `raw` out of `OCTOPUS_TOOLSETS` unless you need it.
+Many APIs let you create a read-only key. Octopus doesn't: the API key can do everything your login can through the API. So `OCTOPUS_ALLOW_WRITES` is enforced by octopus-mcp, not by Octopus. It still means a lot, because the model can only call tools that exist, but a bug in octopus-mcp, or a raw GraphQL query if you enable `raw`, is the only thing between the model and those changes. That's why `raw` is off unless you name it in `OCTOPUS_TOOLSETS`. Leave it out unless you need it.
 
 ## The API key
 
@@ -52,7 +52,7 @@ Many APIs let you create a read-only key. Octopus doesn't: the API key can do ev
 **Read-only** (lowest risk, the default):
 
 - Writes off
-- Leave out `raw` if you don't need it
+- `raw` left out (it is unless you name it)
 - Set `MCP_AUTH_TOKEN`, even on a home network
 
 **EV charging or Saving Sessions:**

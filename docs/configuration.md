@@ -42,7 +42,7 @@ The key gives access to every account on your Octopus login. If you manage sever
 | Variable | Default | Description |
 |---|---|---|
 | `OCTOPUS_ALLOW_WRITES` | `false` | Register the tools that change things: Intelligent Octopus charging target and ready-by time, bump charges, suspending or resuming smart charging, and joining Saving Sessions. Also lets the raw GraphQL tool run mutations. To keep a record of what changed, set [`OCTOPUS_AUDIT_LOG`](#audit-log). |
-| `OCTOPUS_TOOLSETS` | `all` | Comma-separated list of [toolsets](#toolsets) to expose. See [Keeping the tool list small](#keeping-the-tool-list-small). |
+| `OCTOPUS_TOOLSETS` | `all` | Comma-separated list of [toolsets](#toolsets) to expose. `all` means every toolset except `raw`, which must be named (for example `all,raw`). See [Keeping the tool list small](#keeping-the-tool-list-small). |
 
 Boolean variables accept `true`/`false`, `1`/`0`, `yes`/`no` and `on`/`off`. Anything else stops the server with an error.
 
@@ -143,7 +143,7 @@ If both `NAME` and `NAME_FILE` are set, the file wins.
 
 ## Keeping the tool list small
 
-Most MCP clients send every tool's name, description and argument schema to the model with each request. With every toolset enabled that's about 23 KB for the 18 read-only tools, and 27 KB for all 22 tools with writes on. That uses up context you'd rather spend on your conversation and your energy data, and some clients warn about or cap the number of tools.
+Most MCP clients send every tool's name, description and argument schema to the model with each request. With the default toolsets that's about 21 KB for the 16 read-only tools, and 25 KB for 20 tools with writes on (23 KB and 27 KB with `raw` added as well). That uses up context you'd rather spend on your conversation and your energy data, and some clients warn about or cap the number of tools.
 
 `OCTOPUS_TOOLSETS` is the way to keep the list small. Enable only the toolsets you need: the model sees fewer tools, picks the right one more easily, and can't reach the rest at all.
 
@@ -158,7 +158,7 @@ Clients with their own tool search, such as Claude Code, load tool definitions o
 | `tariffs` | Products, prices, Agile and other half-hourly rates, standing charges, cheapest times, regions. Works without account data. |
 | `intelligent` | Intelligent Octopus cars and chargers: status, charging slots and, with writes, settings |
 | `octoplus` | Octoplus points and Saving Sessions |
-| `raw` | Any GraphQL query or REST path. Handy, but gives broad access. |
+| `raw` | Any GraphQL query or REST path. Handy, but gives broad access, so it's **opt-in**: `all` doesn't include it, and it's only enabled when named, for example `OCTOPUS_TOOLSETS=all,raw`. |
 
 The [tool reference](tools.md) lists the tools in each toolset.
 
@@ -168,7 +168,8 @@ The sizes are the length of the server's `tools/list` response. They change a li
 
 | Goal | `OCTOPUS_TOOLSETS` | Read-only | With writes |
 |---|---|---|---|
-| Everything (default) | `all` | 18 tools, 22.5 KB | 22 tools, 26.9 KB |
+| Everything except raw access (default) | `all` | 16 tools, 20.6 KB | 20 tools, 24.9 KB |
+| Everything, including raw access | `all,raw` | 18 tools, 22.5 KB | 22 tools, 26.9 KB |
 | Usage and bills | `account,consumption,tariffs` | 12 tools, 17.0 KB | 12 tools, 17.0 KB |
 | Agile price watching | `account,tariffs` | 10 tools, 12.7 KB | 10 tools, 12.7 KB |
 | EV charging on Intelligent Octopus Go | `account,tariffs,intelligent` | 12 tools, 14.8 KB | 15 tools, 18.3 KB |
@@ -188,7 +189,7 @@ Each toolset on its own:
 
 ## Example configurations
 
-**Read-only** (the safest setup):
+**Read-only** (the default, and the safest setup: no write tools and no raw API access):
 
 ```sh
 OCTOPUS_API_KEY=sk_live_...

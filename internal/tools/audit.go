@@ -21,15 +21,18 @@ type auditLog struct {
 	target string
 	stderr io.Writer
 	now    func() time.Time
+	// scrub removes the API key and Kraken tokens from text, such as a key
+	// pasted literally into a GraphQL query; nil leaves text as it is.
+	scrub  func(string) string
 	mu     sync.Mutex
 	warned sync.Once
 }
 
-func newAuditLog(target string) *auditLog {
+func newAuditLog(target string, scrub func(string) string) *auditLog {
 	if target == "" {
 		return nil
 	}
-	return &auditLog{target: target, stderr: os.Stderr, now: time.Now}
+	return &auditLog{target: target, stderr: os.Stderr, now: time.Now, scrub: scrub}
 }
 
 // auditEntry is one line of the log. Field order is the order in the file.
@@ -52,11 +55,14 @@ func (l *auditLog) record(tool string, args any, callErr error) {
 	entry := auditEntry{
 		Time:      l.now().UTC().Format("2006-01-02T15:04:05.000Z07:00"),
 		Tool:      tool,
-		Arguments: redact(args),
+		Arguments: scrubStrings(redact(args), l.scrub),
 		Outcome:   "ok",
 	}
 	if callErr != nil {
 		entry.Outcome, entry.Error = "error", callErr.Error()
+		if l.scrub != nil {
+			entry.Error = l.scrub(entry.Error)
+		}
 	}
 	line, err := json.Marshal(entry)
 	if err != nil {
@@ -128,4 +134,28 @@ func redact(args any) any {
 		return v
 	}
 	return walk(v)
+}
+
+// scrubStrings applies scrub to every string (and object key) in a decoded JSON
+// value, so a secret written into a value rather than under a secret-looking
+// key, such as an API key in a GraphQL query's text, is masked too.
+func scrubStrings(v any, scrub func(string) string) any {
+	if scrub == nil {
+		return v
+	}
+	switch x := v.(type) {
+	case string:
+		return scrub(x)
+	case map[string]any:
+		out := make(map[string]any, len(x))
+		for k, val := range x {
+			out[scrub(k)] = scrubStrings(val, scrub)
+		}
+		return out
+	case []any:
+		for i := range x {
+			x[i] = scrubStrings(x[i], scrub)
+		}
+	}
+	return v
 }

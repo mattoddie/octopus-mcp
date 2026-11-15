@@ -6,6 +6,31 @@ For octopus-mcp, the "public API" is the set of tool names, their arguments, the
 
 ## [Unreleased]
 
+Fixes from a code review.
+
+### Breaking changes
+
+- **Breaking:** the `raw` toolset (`octopus_graphql` and `octopus_rest_get`) is no longer enabled by default or by `OCTOPUS_TOOLSETS=all`, because it reaches any GraphQL query or REST path. Name it to keep it, for example `OCTOPUS_TOOLSETS=all,raw`.
+
+### Fixed
+
+- `octopus_get_consumption` with `group_by=hour` keeps the two 01:00 hours apart on the day the clocks go back, instead of merging them.
+- `octopus_get_consumption` prices a tariff that comes back in a later agreement (for example Agile, then Go, then Agile again); the later period used to have no rates.
+- `yesterday` and `tomorrow` are counted in UK days, so they're right just after midnight on the day the clocks change, whatever the server's time zone.
+- The `average_p_per_kwh` from `octopus_get_unit_rates` is weighted by how long each rate applies in the period, instead of being a plain average of the rate records.
+- `octopus_find_cheapest_slots` only uses half-hours that end by `to`.
+- `octopus_set_charge_preferences` keeps each day's minimum charge (`min`) when it changes the target or ready-by time; it used to clear it. The result now shows the minimum too.
+
+### Security
+
+- `octopus_rest_get` refuses any path with a `graphql` segment, in any case. A leading `/v1` was removed twice, so `/v1/v1/graphql` passed the check and reached the GraphQL endpoint with a GET.
+- Successful REST and GraphQL responses are scrubbed of the API key and Kraken tokens before tools see them, not just error messages.
+- Audit log entries are scrubbed of the API key and tokens wherever they appear, such as a key pasted into a GraphQL query, not just under secret-looking argument names.
+
+### Changed
+
+- Building from source needs Go 1.26 or later.
+
 ## [0.3.2] - 2026-11-13
 
 ### Added

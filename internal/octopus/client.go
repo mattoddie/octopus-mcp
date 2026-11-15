@@ -156,6 +156,55 @@ func (c *Client) redact(s string) string {
 	return s
 }
 
+// Redact removes the API key and any Kraken token from text, for callers outside
+// the package such as the audit log.
+func (c *Client) Redact(s string) string { return c.redact(s) }
+
+// redactJSON removes the API key and any Kraken token from a JSON document
+// before it is decoded, so successful responses can't carry them into tool
+// output either. Each secret is replaced both as it is and as JSON would escape
+// it inside a string.
+func (c *Client) redactJSON(data []byte) []byte {
+	secrets := []string{}
+	if c.cfg.APIKey != "" {
+		secrets = append(secrets, c.cfg.APIKey)
+	}
+	if list := c.secrets.Load(); list != nil {
+		for _, t := range *list {
+			if len(t) > 8 {
+				secrets = append(secrets, t)
+			}
+		}
+	}
+	for _, s := range secrets {
+		forms := [][]byte{[]byte(s)}
+		if b, err := json.Marshal(s); err == nil {
+			if esc := b[1 : len(b)-1]; string(esc) != s {
+				forms = append(forms, esc)
+			}
+		}
+		for _, f := range forms {
+			if bytes.Contains(data, f) {
+				data = bytes.ReplaceAll(data, f, []byte("[redacted]"))
+			}
+		}
+	}
+	return data
+}
+
+// relativeRESTPath turns the path of an absolute REST URL on the configured host
+// into a path relative to /v1, or reports false if it isn't under the API's /v1.
+func (c *Client) relativeRESTPath(p string) (string, bool) {
+	base := "/v1"
+	if u, err := url.Parse(c.cfg.APIURL); err == nil {
+		base = strings.TrimRight(u.Path, "/") + "/v1"
+	}
+	if !strings.HasPrefix(p, base+"/") {
+		return "", false
+	}
+	return p[len(base):], true
+}
+
 // redactValue redacts every string in a decoded JSON value.
 func (c *Client) redactValue(v any) any {
 	switch x := v.(type) {
@@ -195,12 +244,13 @@ func (c *Client) GetPublic(ctx context.Context, path string, q url.Values, out a
 	return c.rest(ctx, path, q, false, out)
 }
 
-// RESTURL builds the full URL of a REST path relative to /v1.
+// RESTURL builds the full URL of a REST path relative to /v1. The path is used
+// as given: a leading /v1 is not removed here, so a path is normalised in exactly
+// one place (by the caller) and the URL requested is the one that was checked.
 func (c *Client) RESTURL(path string, q url.Values) string {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	path = strings.TrimPrefix(path, "/v1")
 	if !strings.HasSuffix(path, "/") {
 		path += "/" // Octopus redirects paths without the trailing slash
 	}
@@ -224,7 +274,7 @@ func (c *Client) rest(ctx context.Context, path string, q url.Values, auth bool,
 	if out == nil || len(bytes.TrimSpace(data)) == 0 {
 		return nil
 	}
-	dec := json.NewDecoder(bytes.NewReader(data))
+	dec := json.NewDecoder(bytes.NewReader(c.redactJSON(data)))
 	dec.UseNumber()
 	if err := dec.Decode(out); err != nil {
 		return fmt.Errorf("GET %s: unexpected response: %w", path, err)
@@ -264,7 +314,12 @@ func (c *Client) GetPages(ctx context.Context, path string, q url.Values, auth b
 		if err != nil {
 			return nil, fmt.Errorf("bad next link from Octopus: %w", err)
 		}
-		path, q = nu.Path, nu.Query()
+		// Next links are absolute (…/v1/products/?page=2); keep the path relative to /v1.
+		rel, ok := c.relativeRESTPath(nu.Path)
+		if !ok {
+			return nil, fmt.Errorf("unexpected next link from Octopus: %s", displayURL(next))
+		}
+		path, q = rel, nu.Query()
 	}
 	if len(page.Results) > maxItems {
 		page.Results = page.Results[:maxItems]
@@ -329,7 +384,7 @@ func (c *Client) graphql(ctx context.Context, endpoint, query string, vars Obj, 
 		return fmt.Errorf("unexpected GraphQL response: %w", err)
 	}
 	if out != nil && len(res.Data) > 0 && string(res.Data) != "null" {
-		dec := json.NewDecoder(bytes.NewReader(res.Data))
+		dec := json.NewDecoder(bytes.NewReader(c.redactJSON(res.Data)))
 		dec.UseNumber()
 		if err := dec.Decode(out); err != nil {
 			return fmt.Errorf("unexpected GraphQL data: %w", err)

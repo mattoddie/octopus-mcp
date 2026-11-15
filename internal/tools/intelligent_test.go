@@ -93,6 +93,28 @@ func TestSetChargePreferences(t *testing.T) {
 	}
 }
 
+// Each day's schedule is replaced as a whole, so a minimum charge the user set
+// used to be cleared whenever the target or ready-by time changed.
+func TestSetChargePreferencesKeepsTheMinimum(t *testing.T) {
+	env := newEnv(t)
+	data := devicesData()
+	for _, s := range list(get(list(data["devices"])[0], "preferences", "schedules")) {
+		s.(Obj)["min"] = 20
+	}
+	env.mock.OnGraphQL(`query Devices`, octopustest.Data(data))
+	env.mock.OnGraphQL(`mutation SetDevicePreferences`, func(r octopustest.GraphQLRequest) (any, []any) {
+		return Obj{"setDevicePreferences": Obj{"id": "dev-ev-1", "preferences": Obj{"schedules": get(r.Variables, "input", "schedules")}}}, nil
+	})
+	res := env.obj("octopus_set_charge_preferences", map[string]any{"target_percent": 90})
+	scheds := list(env.mock.LastGraphQL("mutation SetDevicePreferences").Variables["input"].(map[string]any)["schedules"])
+	if len(scheds) != 7 || asJSON(t, scheds[0]) != `{"dayOfWeek":"MONDAY","max":"90","min":"20","time":"07:00"}` {
+		t.Errorf("schedules: %v", scheds)
+	}
+	if num(get(list(res["schedules"])[0], "minimum")) != 20 {
+		t.Errorf("result: %v", res)
+	}
+}
+
 func TestBumpChargeAndSmartControl(t *testing.T) {
 	env := newEnv(t)
 	env.mock.OnGraphQL(`query Devices`, octopustest.Data(devicesData()))

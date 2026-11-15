@@ -227,3 +227,40 @@ func TestAverageRate(t *testing.T) {
 		}
 	}
 }
+
+// The average used to be a plain mean of the records, so a half-hour at 50p
+// counted as much as a whole day at 10p.
+func TestUnitRatesAverageIsTimeWeighted(t *testing.T) {
+	env := newEnv(t)
+	day := time.Date(2026, 10, 15, 0, 0, 0, 0, octopus.London)
+	env.mock.On("GET", "/products/VAR-22-11-01/electricity-tariffs/E-1R-VAR-22-11-01-C/standard-unit-rates/", octopustest.JSON(paged(
+		// Started long before the window: only its part inside counts.
+		rateRecord(day.AddDate(0, -1, 0), day.Add(23*time.Hour+30*time.Minute), 10),
+		rateRecord(day.Add(23*time.Hour+30*time.Minute), time.Time{}, 50),
+	)))
+	res := env.obj("octopus_get_unit_rates", map[string]any{"tariff_code": "E-1R-VAR-22-11-01-C", "from": "2026-10-15", "to": "2026-10-15"})
+	// 23.5 hours at 10p and half an hour at 50p: (235 + 25) / 24 = 10.83p.
+	if got := num(get(res, "summary", "average_p_per_kwh")); got != 10.83 {
+		t.Errorf("average: %v, want 10.83", got)
+	}
+	// The records keep their real start and end.
+	if rates := list(res["rates"]); len(rates) != 2 || get(rates[0], "from") != "2026-09-15T00:00:00+01:00" {
+		t.Errorf("rates: %v", rates)
+	}
+}
+
+// The search used to take the half-hour that started before "to" even when it
+// ended after it.
+func TestFindCheapestSlotsEndsByTo(t *testing.T) {
+	env := newEnv(t)
+	agileDay(t, env, []float64{30, 25, 10, 12, 40, -2, 5, 30}, testNow)
+	res := env.obj("octopus_find_cheapest_slots", map[string]any{"tariff_code": "E-1R-AGILE-24-10-01-C", "duration_hours": 0.5, "to": "2026-10-15T15:45"})
+	if res["prices_known_until"] != "2026-10-15T15:30:00+01:00" || get(res, "best_block", "start") != "2026-10-15T14:00:00+01:00" {
+		t.Errorf("slots past to: %v", res)
+	}
+	for _, s := range list(res["cheapest_half_hours"]) {
+		if get(s, "start") == "2026-10-15T15:30:00+01:00" {
+			t.Errorf("the 15:30 half-hour ends after to: %v", res["cheapest_half_hours"])
+		}
+	}
+}

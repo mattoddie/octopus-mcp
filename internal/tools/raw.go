@@ -72,6 +72,18 @@ func mayWrite(query string) bool {
 	return false
 }
 
+// isGraphQLPath reports whether a REST path names a GraphQL endpoint: any
+// segment called graphql, in any case, so /graphql/, /GraphQL and a /v1 left in
+// the path (/v1/graphql) are all refused.
+func isGraphQLPath(p string) bool {
+	for _, seg := range strings.Split(p, "/") {
+		if strings.EqualFold(seg, "graphql") {
+			return true
+		}
+	}
+	return false
+}
+
 func registerRaw(c *Context) {
 	cl := c.Client
 
@@ -120,14 +132,22 @@ func registerRaw(c *Context) {
 		if err != nil {
 			return nil, errors.New("path is not validly percent-encoded")
 		}
-		p = strings.TrimPrefix(strings.TrimSpace(p), "/v1")
+		// The path is relative to /v1; a leading /v1 is removed here, once, and
+		// nowhere else, so the path checked below is the path requested.
+		p = strings.TrimSpace(p)
+		if p == "/v1" || strings.HasPrefix(p, "/v1/") {
+			p = p[len("/v1"):]
+		}
 		// One round of decoding only: a '%' left over (from %25) would be decoded again
 		// by Octopus, turning %252e%252e into "..".
 		if strings.ContainsAny(p, "%") || strings.ContainsFunc(p, unicode.IsControl) {
 			return nil, errors.New("path must be percent-encoded at most once and must not contain '%' or control characters after decoding")
 		}
-		if !strings.HasPrefix(p, "/") || strings.Contains(p, "..") || strings.ContainsAny(p, "?#\\") || strings.Contains(p, "//") || strings.Contains(p, "/./") || strings.HasSuffix(p, "/.") || strings.HasPrefix(strings.ToLower(p), "/graphql") {
-			return nil, errors.New("path must start with /, must not contain '..', './' or '//' segments, must not include a query string (use query), and can't be the GraphQL endpoint (use octopus_graphql)")
+		if !strings.HasPrefix(p, "/") || strings.Contains(p, "..") || strings.ContainsAny(p, "?#\\") || strings.Contains(p, "//") || strings.Contains(p, "/./") || strings.HasSuffix(p, "/.") {
+			return nil, errors.New("path must start with /, must not contain '..', './' or '//' segments, and must not include a query string (use query)")
+		}
+		if isGraphQLPath(p) {
+			return nil, errors.New("path must not be a GraphQL endpoint (use octopus_graphql, which checks what a query does)")
 		}
 		q := url.Values{}
 		for k, v := range a.Query {

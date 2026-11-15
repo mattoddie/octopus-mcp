@@ -303,13 +303,19 @@ func registerIntelligent(c *Context) {
 			if target == "" || ready == "" {
 				return nil, fmt.Errorf("%s has no current schedule to keep; give both target_percent and ready_by", strings.ToLower(day))
 			}
-			schedules = append(schedules, Obj{"dayOfWeek": day, "time": ready, "max": target})
+			sched := Obj{"dayOfWeek": day, "time": ready, "max": target}
+			// The input replaces each day's schedule, and min (optional in
+			// PreferencesScheduleInput) would be cleared if it were left out.
+			if minimum := octopus.Str(s, "min"); minimum != "" {
+				sched["min"] = minimum
+			}
+			schedules = append(schedules, sched)
 		}
 		var res Obj
 		err = cl.GraphQL(ctx, `mutation SetDevicePreferences($input: SmartFlexDevicePreferencesInput!) {
   setDevicePreferences(input: $input) {
     id
-    preferences { schedules { dayOfWeek time max } }
+    preferences { schedules { dayOfWeek time min max } }
   }
 }`, Obj{"input": Obj{"deviceId": octopus.Str(device, "id"), "mode": "CHARGE", "unit": "PERCENTAGE", "schedules": schedules}}, &res)
 		if err != nil {
@@ -317,7 +323,7 @@ func registerIntelligent(c *Context) {
 		}
 		var after []Obj
 		for _, s := range octopus.List(res, "setDevicePreferences", "preferences", "schedules") {
-			after = append(after, Obj{"day": octopus.Str(s, "dayOfWeek"), "ready_by": shortTime(octopus.Str(s, "time")), "target": octopus.NumOrNil(s, 0, "max")})
+			after = append(after, octopus.Compact(Obj{"day": octopus.Str(s, "dayOfWeek"), "ready_by": shortTime(octopus.Str(s, "time")), "target": octopus.NumOrNil(s, 0, "max"), "minimum": octopus.NumOrNil(s, 0, "min")}))
 		}
 		return Obj{"updated": true, "device_id": octopus.Str(device, "id"), "schedules": after}, nil
 	})

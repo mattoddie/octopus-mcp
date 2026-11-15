@@ -181,7 +181,66 @@ func TestParseWhen(t *testing.T) {
 	if end.Sub(start) != 23*time.Hour {
 		t.Errorf("spring forward day: %v", end.Sub(start))
 	}
+	// Days step in UK time: at 00:30 BST on 29 March 2027 (23:30 UTC on the 28th,
+	// the day the clocks went forward) yesterday is the 28th, not the 27th.
+	spring := time.Date(2027, 3, 28, 23, 30, 0, 0, time.UTC)
+	for in, want := range map[string]string{"yesterday": "2027-03-28T00:00:00Z", "today": "2027-03-29T00:00:00+01:00", "tomorrow": "2027-03-30T00:00:00+01:00"} {
+		if got, _ := parseWhen(in, false, spring); octopus.LocalTime(got) != want {
+			t.Errorf("%s after the clocks change: %s, want %s", in, octopus.LocalTime(got), want)
+		}
+	}
 	if _, err := parseWhen("next tuesday", false, testNow); err == nil {
 		t.Error("nonsense accepted")
+	}
+}
+
+// When the clocks go back, 01:00 to 02:00 happens twice; group_by=hour used to
+// merge the two hours into one.
+func TestConsumptionHourlyOnTheDayTheClocksGoBack(t *testing.T) {
+	env := newEnv(t)
+	env.withAccount()
+	day := time.Date(2026, 10, 25, 0, 0, 0, 0, octopus.London)
+	env.mock.On("GET", "/electricity-meter-points/1000000000001/meters/21E0000001/consumption/", octopustest.JSON(Obj{"count": 50, "next": nil, "results": halfHours(day, 50, 0.5)}))
+	res := env.obj("octopus_get_consumption", map[string]any{"from": "2026-10-25", "to": "2026-10-25", "group_by": "hour", "include_cost": false})
+	rows := list(res["rows"])
+	if len(rows) != 25 {
+		t.Fatalf("want 25 hours, got %d: %v", len(rows), rows)
+	}
+	if get(rows[1], "start") != "2026-10-25T01:00:00+01:00" || get(rows[2], "start") != "2026-10-25T01:00:00Z" || num(get(rows[1], "kWh")) != 1 || num(get(rows[2], "kWh")) != 1 {
+		t.Errorf("repeated hour: %v %v", rows[1], rows[2])
+	}
+}
+
+// Rates were cached by tariff code but fetched for the first agreement's
+// window, so a tariff that came back in a later agreement had no rates there.
+func TestConsumptionPricesARepeatedTariff(t *testing.T) {
+	env := newEnv(t)
+	acct := jsonObj(t, accountFixture)
+	mp := list(get(list(acct["properties"])[0], "electricity_meter_points"))[0].(Obj)
+	mp["agreements"] = []any{
+		Obj{"tariff_code": "E-1R-AGILE-24-10-01-C", "valid_from": "2026-10-01T00:00:00+01:00", "valid_to": "2026-10-11T00:00:00+01:00"},
+		Obj{"tariff_code": "E-1R-GO-VAR-22-10-14-C", "valid_from": "2026-10-11T00:00:00+01:00", "valid_to": "2026-10-12T00:00:00+01:00"},
+		Obj{"tariff_code": "E-1R-AGILE-24-10-01-C", "valid_from": "2026-10-12T00:00:00+01:00", "valid_to": nil},
+	}
+	env.mock.On("GET", "/accounts/A-1234ABCD/", octopustest.JSON(acct))
+	env.mock.OnGraphQL(`query AccountMeters`, octopustest.Data(meterDevicesData()))
+	day := time.Date(2026, 10, 10, 0, 0, 0, 0, octopus.London)
+	env.mock.On("GET", "/electricity-meter-points/1000000000001/meters/21E0000001/consumption/", octopustest.JSON(Obj{"count": 144, "next": nil, "results": halfHours(day, 144, 1)}))
+	// Each rate request gets a rate for exactly the period it asked for.
+	window := func(p float64) octopustest.Handler {
+		return func(r octopustest.Request, _ []string) (int, any) {
+			from, _ := time.Parse(time.RFC3339, r.Query.Get("period_from"))
+			to, _ := time.Parse(time.RFC3339, r.Query.Get("period_to"))
+			return 200, paged(rateRecord(from, to, p))
+		}
+	}
+	env.mock.On("GET", "/products/AGILE-24-10-01/electricity-tariffs/E-1R-AGILE-24-10-01-C/standard-unit-rates/", window(10))
+	env.mock.On("GET", "/products/GO-VAR-22-10-14/electricity-tariffs/E-1R-GO-VAR-22-10-14-C/standard-unit-rates/", window(20))
+	env.mock.On("GET", "/products/.*/standing-charges/", octopustest.JSON(paged(rateRecord(day.AddDate(-1, 0, 0), time.Time{}, 0))))
+	res := env.obj("octopus_get_consumption", map[string]any{"from": "2026-10-10", "to": "2026-10-12", "group_by": "day"})
+	s := res["summary"].(Obj)
+	// 48 kWh on each tariff period: 96 at 10p and 48 at 20p.
+	if s["half_hours_without_a_rate"] != nil || num(s["unit_cost_gbp"]) != 19.2 {
+		t.Errorf("summary: %v", s)
 	}
 }

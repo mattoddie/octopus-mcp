@@ -165,7 +165,9 @@ func rateRow(r octopus.Rate) Obj {
 	return o
 }
 
-// clip limits rates to [from, to), trimming the first and last to the window.
+// clip keeps the rates whose period overlaps [from, to). The records are kept
+// whole, so the first and last still show when that price really started and
+// ended; rateStats weights each by the part inside the window.
 func clip(rs octopus.Rates, from, to time.Time) octopus.Rates {
 	var out octopus.Rates
 	for _, r := range rs {
@@ -177,21 +179,37 @@ func clip(rs octopus.Rates, from, to time.Time) octopus.Rates {
 	return out
 }
 
-func rateStats(rs octopus.Rates, now time.Time) Obj {
+// rateStats summarises the rates in [from, to). The average is weighted by how
+// long each rate applies inside the window, so a rate that lasts all day counts
+// for more than a half-hour one.
+func rateStats(rs octopus.Rates, from, to, now time.Time) Obj {
 	if len(rs) == 0 {
 		return Obj{}
 	}
-	lo, hi, sum, n := math.Inf(1), math.Inf(-1), 0.0, 0
+	lo, hi, sum, hours := math.Inf(1), math.Inf(-1), 0.0, 0.0
 	negative := 0
-	for _, r := range rs {
+	for i, r := range rs {
 		lo, hi = math.Min(lo, r.IncVAT), math.Max(hi, r.IncVAT)
-		sum += r.IncVAT
-		n++
+		start, end := maxTime(r.From, from), to
+		if !r.To.IsZero() && r.To.Before(end) {
+			end = r.To
+		}
+		// A newer record takes over from an open-ended or overlapping one (see Rates.At).
+		if i+1 < len(rs) && rs[i+1].From.Before(end) {
+			end = rs[i+1].From
+		}
+		if h := end.Sub(start).Hours(); h > 0 {
+			sum += r.IncVAT * h
+			hours += h
+		}
 		if r.IncVAT < 0 {
 			negative++
 		}
 	}
-	out := Obj{"min_p_per_kwh": octopus.Round(lo, 2), "max_p_per_kwh": octopus.Round(hi, 2), "average_p_per_kwh": octopus.Round(sum/float64(n), 2)}
+	out := Obj{"min_p_per_kwh": octopus.Round(lo, 2), "max_p_per_kwh": octopus.Round(hi, 2)}
+	if hours > 0 {
+		out["average_p_per_kwh"] = octopus.Round(sum/hours, 2)
+	}
 	if negative > 0 {
 		out["negative_price_periods"] = negative
 		out["note"] = "Negative prices mean Octopus pays you to use electricity in those periods."
@@ -403,7 +421,7 @@ func registerTariffs(c *Context) {
 				return nil, err
 			}
 			rs = clip(rs, from, to)
-			res := Obj{"summary": rateStats(rs, now)}
+			res := Obj{"summary": rateStats(rs, from, to, now)}
 			rows := make([]Obj, 0, len(rs))
 			for _, r := range rs {
 				rows = append(rows, rateRow(r))
@@ -505,9 +523,9 @@ func registerTariffs(c *Context) {
 		if err != nil {
 			return nil, err
 		}
-		// Half-hour slots from the first whole half-hour, up to where prices are known.
+		// Whole half-hour slots inside [from, to), up to where prices are known.
 		var slots []octopus.Rate
-		for s := halfHourFloor(from); s.Before(to); s = s.Add(30 * time.Minute) {
+		for s := halfHourFloor(from); !s.Add(30 * time.Minute).After(to); s = s.Add(30 * time.Minute) {
 			if s.Before(from) {
 				continue
 			}

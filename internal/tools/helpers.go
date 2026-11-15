@@ -38,10 +38,12 @@ func parseWhen(s string, end bool, now time.Time) (time.Time, error) {
 		return now, nil
 	case "today":
 		return day(now), nil
+	// Step days in UK time: in the process's zone (UTC in the container) the
+	// calendar day can differ from the UK one around midnight.
 	case "yesterday":
-		return day(now.AddDate(0, 0, -1)), nil
+		return day(now.In(octopus.London).AddDate(0, 0, -1)), nil
 	case "tomorrow":
-		return day(now.AddDate(0, 0, 1)), nil
+		return day(now.In(octopus.London).AddDate(0, 0, 1)), nil
 	}
 	switch {
 	case dateRe.MatchString(s):

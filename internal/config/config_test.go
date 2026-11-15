@@ -25,8 +25,34 @@ func TestDefaults(t *testing.T) {
 	if o.Timeout != 30*time.Second || o.Account != "" || o.APIKey != key {
 		t.Errorf("octopus: %+v", o)
 	}
-	if cfg.Tools.AllowWrites || len(cfg.Tools.Toolsets) != len(Toolsets) {
+	if cfg.Tools.AllowWrites || len(cfg.Tools.Toolsets) != len(Toolsets)-len(OptInToolsets) || cfg.Tools.Toolsets["raw"] {
 		t.Errorf("tools: %+v", cfg.Tools)
+	}
+}
+
+// The raw toolset reaches any GraphQL query or REST path, so neither the
+// default nor "all" enables it: it must be named.
+func TestRawToolsetIsOptIn(t *testing.T) {
+	for _, v := range []string{"", "all", "ALL", " all ", "all,"} {
+		cfg, err := Load(MapEnv(map[string]string{"OCTOPUS_API_KEY": key, "OCTOPUS_TOOLSETS": v}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.Tools.Toolsets["raw"] {
+			t.Errorf("OCTOPUS_TOOLSETS=%q enables raw", v)
+		}
+		if !cfg.Tools.Toolsets["account"] || !cfg.Tools.Toolsets["octoplus"] {
+			t.Errorf("OCTOPUS_TOOLSETS=%q: %v", v, cfg.Tools.Toolsets)
+		}
+	}
+	for _, v := range []string{"all,raw", "raw", "account, RAW"} {
+		cfg, err := Load(MapEnv(map[string]string{"OCTOPUS_API_KEY": key, "OCTOPUS_TOOLSETS": v}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !cfg.Tools.Toolsets["raw"] {
+			t.Errorf("OCTOPUS_TOOLSETS=%q doesn't enable raw", v)
+		}
 	}
 }
 
@@ -210,7 +236,7 @@ func TestBundlePlaceholdersAreUnset(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Octopus.Account != "" || cfg.Tools.AllowWrites || cfg.Tools.AuditLog != "" || len(cfg.Tools.Toolsets) != len(Toolsets) || cfg.Octopus.Timeout != 30*time.Second || cfg.Octopus.APIKey != key {
+	if cfg.Octopus.Account != "" || cfg.Tools.AllowWrites || cfg.Tools.AuditLog != "" || len(cfg.Tools.Toolsets) != len(Toolsets)-len(OptInToolsets) || cfg.Octopus.Timeout != 30*time.Second || cfg.Octopus.APIKey != key {
 		t.Errorf("placeholders were used as values: %+v %+v", cfg.Octopus.Account, cfg.Tools)
 	}
 	m["OCTOPUS_API_KEY"] = "${user_config.api_key}"

@@ -27,7 +27,7 @@ var toolsetInfo = map[string]string{
 	"tariffs":     "Public tariff data: products on sale, prices by region, half-hourly unit rates (Agile, Go and others), standing charges, the cheapest times to use electricity, and the region for a postcode.",
 	"intelligent": "Intelligent Octopus: connected cars and chargers, planned and completed charging slots, and (with writes) the charging target and ready-by time, bump charges and smart control.",
 	"octoplus":    "Octoplus rewards: points balance, Saving Sessions with their rewards and results, and (with writes) joining a session.",
-	"raw":         "Raw API escape hatches for anything the other tools don't cover: GraphQL queries (mutations only with writes enabled) and REST GET requests.",
+	"raw":         "Raw API escape hatches for anything the other tools don't cover: GraphQL queries (mutations only with writes enabled) and REST GET requests. Opt-in: `all` leaves this toolset out, so name it in `OCTOPUS_TOOLSETS` (for example `all,raw`).",
 }
 
 var badge = map[tools.Gate]string{tools.Read: "🟢 read", tools.Write: "🟠 write"}
@@ -163,7 +163,7 @@ func main() {
 		"| Label | Registered when |", "|---|---|",
 		"| 🟢 read | Always |",
 		"| 🟠 write | `OCTOPUS_ALLOW_WRITES=true` |", "",
-		"Every tool also needs its toolset to be enabled in `OCTOPUS_TOOLSETS`, which enables all toolsets by default. Prices are in pence per kWh (unit rates) or pence per day (standing charges), including VAT; money totals are in pounds. Times are UK local time. Time arguments take `YYYY-MM-DD` (a whole UK day), a date and time, or `now`, `today`, `yesterday` and `tomorrow`.", "",
+		"Every tool also needs its toolset to be enabled in `OCTOPUS_TOOLSETS`, which enables every toolset except `raw` by default; `raw` must be named. Prices are in pence per kWh (unit rates) or pence per day (standing charges), including VAT; money totals are in pounds. Times are UK local time. Time arguments take `YYYY-MM-DD` (a whole UK day), a date and time, or `now`, `today`, `yesterday` and `tomorrow`.", "",
 		"## Contents", "")
 	for _, ts := range config.Toolsets {
 		w(fmt.Sprintf("- [`%s`](#%s): %s", ts, ts, toolsetInfo[ts]))

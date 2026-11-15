@@ -88,10 +88,6 @@
       "description": "Get a tariff's unit rates (pence per kWh, including VAT) over a period: every half-hour for Agile, the cheap and peak periods for Go, Intelligent Go, Cosy and Flux, daily prices for Tracker, and the flat rate for fixed and flexible tariffs. Also gives the price now, when it next changes, and the minimum, maximum and average. Choose the tariff by tariff_code, by product_code with region or postcode, or leave them out for the account's current tariff. Day/night tariffs list day and night rates separately."
     },
     {
-      "name": "octopus_graphql",
-      "description": "Run any query against Octopus's Kraken GraphQL API (or its backend API), for anything the other tools don't cover. The schema can be explored at https://api.octopus.energy/v1/graphql/. Most queries take accountNumber. Only queries are allowed because writes are disabled (OCTOPUS_ALLOW_WRITES=false). Subscriptions, and any operation that mentions tokens, API keys or passwords, are always refused."
-    },
-    {
       "name": "octopus_list_bills",
       "description": "List the account's bills (statements), newest first: the period covered, issue date, charges and credits, and the opening and closing balances, all in pounds. Set include_pdf_links for a temporary link to each bill's PDF."
     },
@@ -106,10 +102,6 @@
     {
       "name": "octopus_list_transactions",
       "description": "List the account's transactions, newest first: charges for energy, payments (such as direct debits), credits (such as Octoplus rewards or Saving Session payouts) and refunds, in pounds, with the balance after each."
-    },
-    {
-      "name": "octopus_rest_get",
-      "description": "GET any path of the Octopus REST API (https://api.octopus.energy/v1), for anything the other tools don't cover, such as /electricity-meter-points/<MPAN>/ or a consumption path with your own parameters. The REST API is read-only; the API key is sent with HTTP Basic auth."
     }
   ],
   "tools_generated": true,
@@ -194,7 +186,7 @@
     "toolsets": {
       "type": "string",
       "title": "Toolsets",
-      "description": "Optional comma-separated list to expose fewer tools, e.g. account,consumption,tariffs. Choose from account, consumption, tariffs, intelligent, octoplus and raw. Empty means all.",
+      "description": "Optional comma-separated list to expose fewer tools, e.g. account,consumption,tariffs. Choose from account, consumption, tariffs, intelligent, octoplus and raw. Empty means all except raw, which gives broad API access and must be named (all,raw) to be enabled.",
       "default": ""
     },
     "audit_log": {

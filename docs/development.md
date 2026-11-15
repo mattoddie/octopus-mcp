@@ -14,7 +14,7 @@ This page is for people working on octopus-mcp itself. Start with [CONTRIBUTING.
 
 ## Setup
 
-You need Go 1.25 or later, and Docker for building the image.
+You need Go 1.26 or later, and Docker for building the image.
 
 ```sh
 git clone https://github.com/mattoddie/octopus-mcp.git

@@ -75,6 +75,12 @@ func TestAuditLog(t *testing.T) {
 	if bytes.Contains(data, []byte("hunter2")) {
 		t.Error("a secret reached the audit log")
 	}
+	// A literal API key in the query text, under no secret-looking key, is masked too.
+	env.obj("octopus_graphql", map[string]any{"query": `mutation { updateBoostCharge(input: {deviceId: "` + octopustest.APIKey + `", action: BOOST}) { id } }`})
+	data, _ = os.ReadFile(path)
+	if bytes.Contains(data, []byte(octopustest.APIKey)) || !bytes.Contains(data, []byte("[redacted]")) {
+		t.Errorf("the API key reached the audit log: %s", data)
+	}
 	if info, err := os.Stat(path); err != nil || info.Mode().Perm() != config.AuditLogMode {
 		t.Errorf("mode: %v %v", info, err)
 	}
@@ -91,17 +97,17 @@ func TestAuditLog(t *testing.T) {
 
 func TestAuditLogStderrAndFailures(t *testing.T) {
 	var buf bytes.Buffer
-	l := newAuditLog(config.AuditLogStderr)
+	l := newAuditLog(config.AuditLogStderr, nil)
 	l.stderr = &buf
 	l.record("octopus_join_saving_session", joinSessionArgs{EventCode: "E1"}, errors.New("nope"))
 	line := strings.TrimSpace(buf.String())
 	if !strings.HasPrefix(line, `{"time":"`) || !strings.Contains(line, `"tool":"octopus_join_saving_session"`) || !strings.HasSuffix(line, `"outcome":"error","error":"nope"}`) {
 		t.Errorf("stderr line: %s", line)
 	}
-	if newAuditLog("") != nil {
+	if newAuditLog("", nil) != nil {
 		t.Error("an empty target made a log")
 	}
 	// A log that can't be written doesn't fail the call.
-	bad := newAuditLog(filepath.Join(t.TempDir(), "gone", "audit.jsonl"))
+	bad := newAuditLog(filepath.Join(t.TempDir(), "gone", "audit.jsonl"), nil)
 	bad.record("octopus_bump_charge", nil, nil)
 }

@@ -42,7 +42,7 @@ Ask about your energy in plain English. The assistant picks from **22 tools** to
 - **💷 Real costs, half-hour by half-hour.** Consumption is priced with the actual unit rate for every half-hour from the tariff you were on at the time, plus standing charges, so Agile, Go, Intelligent Go, Cosy, Flux and Tracker are costed properly.
 - **🕑 Cheapest-time finder.** Finds the cheapest continuous block for a job, runner-up times and the cheapest half-hours, and says what it'll cost against running it now.
 - **🔥 Honest about units.** SMETS2 gas meters report m³. octopus-mcp knows which your meter uses, converts with the standard formula, and tells you what it assumed.
-- **🛡️ Safe by default.** The server is read-only unless you turn on writes. Tools that aren't allowed aren't registered at all, and the raw GraphQL tool can't run mutations without writes, or ever touch tokens or API keys.
+- **🛡️ Safe by default.** The server is read-only unless you turn on writes. Tools that aren't allowed aren't registered at all. The raw API tools are off unless you ask for them, and the raw GraphQL tool can't run mutations without writes, or ever touch tokens or API keys.
 - **🔑 Simple, secret-safe auth.** Just your Octopus API key: REST requests use it directly, and GraphQL gets short-lived Kraken tokens that are renewed automatically and kept in memory. Neither the key nor tokens ever appear in output or logs.
 - **🎛️ Tunable.** Expose only the toolsets you need, which keeps the model's context small and focused.
 - **🧪 Tested.** The test suite runs against a mock Octopus REST API and GraphQL APIs on every build.
@@ -100,7 +100,7 @@ Octopus API keys can't be limited to read-only, so this switch, enforced by octo
 | `tariffs` | Products on sale, prices by region, half-hourly unit rates (Agile, Go and more), standing charges, the cheapest times to use electricity, region by postcode. No account needed |
 | `intelligent` | Intelligent Octopus cars and chargers: status, schedule, planned and completed charging slots; with writes, target and ready-by time, bump charge, smart control |
 | `octoplus` | Octoplus points, Saving Sessions with rewards and results; with writes, joining a session |
-| `raw` | Escape hatches: any GraphQL query (mutations only with writes) and any REST GET |
+| `raw` | Escape hatches: any GraphQL query (mutations only with writes) and any REST GET. Opt-in: only enabled when named in `OCTOPUS_TOOLSETS`, for example `all,raw` |
 
 See the **[tool reference](docs/tools.md)** for every tool and argument. Ready-made prompts like `energy_report`, `plan_cheap_usage` and `compare_tariffs` chain the tools together for common jobs.
 

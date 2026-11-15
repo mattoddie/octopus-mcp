@@ -16,6 +16,12 @@ import (
 // Toolsets are groups of tools that can be switched on and off with OCTOPUS_TOOLSETS.
 var Toolsets = []string{"account", "consumption", "tariffs", "intelligent", "octoplus", "raw"}
 
+// OptInToolsets are left out of "all" (and so of the default) and must be listed
+// by name. The raw tools send any GraphQL query or REST path, reaching data and
+// operations the curated tools don't expose, so they are never enabled without
+// being asked for.
+var OptInToolsets = map[string]bool{"raw": true}
+
 // Octopus holds the API settings.
 type Octopus struct {
 	// APIKey is the account's API key (from the Octopus dashboard). It is sent as the
@@ -197,12 +203,14 @@ func Load(env Env) (*Config, error) {
 		case name == "":
 		case name == "all":
 			for _, ts := range Toolsets {
-				t.Toolsets[ts] = true
+				if !OptInToolsets[ts] {
+					t.Toolsets[ts] = true
+				}
 			}
 		case contains(Toolsets, name):
 			t.Toolsets[name] = true
 		default:
-			return nil, fmt.Errorf("unknown toolset %q in OCTOPUS_TOOLSETS; valid: all, %s", name, strings.Join(Toolsets, ", "))
+			return nil, fmt.Errorf("unknown toolset %q in OCTOPUS_TOOLSETS; valid: all (every toolset except raw), %s", name, strings.Join(Toolsets, ", "))
 		}
 	}
 

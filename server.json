@@ -40,7 +40,7 @@
         },
         {
           "name": "OCTOPUS_TOOLSETS",
-          "description": "Comma-separated toolsets to expose: account, consumption, tariffs, intelligent, octoplus, raw. Empty means all."
+          "description": "Comma-separated toolsets to expose: account, consumption, tariffs, intelligent, octoplus, raw. Empty means all, which leaves out raw: name it (all,raw) to enable it."
         },
         {
           "name": "OCTOPUS_AUDIT_LOG",

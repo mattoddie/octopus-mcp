@@ -83,7 +83,9 @@ func groupStart(t time.Time, by string) time.Time {
 	case "half_hour":
 		return l
 	case "hour":
-		return time.Date(y, m, d, l.Hour(), 0, 0, 0, octopus.London)
+		// Truncate on the absolute time: UK offsets are whole hours, and building the
+		// time from the wall clock would merge the two 01:00 hours when the clocks go back.
+		return l.Truncate(time.Hour)
 	case "week":
 		offset := (int(l.Weekday()) + 6) % 7 // Monday = 0
 		return time.Date(y, m, d-offset, 0, 0, 0, 0, octopus.London)
@@ -209,14 +211,21 @@ func registerConsumption(c *Context) {
 		if mp.Export {
 			costWord = "earnings_gbp"
 		}
-		lookups := map[string]*octopus.UnitRateLookup{}
+		// Rates are loaded per agreement (tariff code and start), for that agreement's
+		// part of the period: the same tariff code can come back in a later agreement.
+		type lookupKey struct {
+			code string
+			from time.Time
+		}
+		lookups := map[lookupKey]*octopus.UnitRateLookup{}
 		var costErrs []string
 		priceAt := func(t time.Time) (float64, bool) {
 			ag := mp.agreementAt(t)
 			if ag == nil {
 				return 0, false
 			}
-			l, ok := lookups[ag.Tariff.Code]
+			key := lookupKey{ag.Tariff.Code, ag.From}
+			l, ok := lookups[key]
 			if !ok {
 				lf, lt := maxTime(from, ag.From), to
 				if !ag.To.IsZero() && ag.To.Before(lt) {
@@ -228,7 +237,7 @@ func registerConsumption(c *Context) {
 					costErrs = append(costErrs, ag.Tariff.Code+": "+err.Error())
 					l = nil
 				}
-				lookups[ag.Tariff.Code] = l
+				lookups[key] = l
 				if l != nil && ag.Tariff.DayNight() {
 					assumptions = append(assumptions, "Day/night tariff priced with night hours 00:30 to 07:30 GMT; Economy 7 hours vary by meter.")
 				}

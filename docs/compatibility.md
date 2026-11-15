@@ -49,14 +49,14 @@ These come from Octopus's documentation and from using the APIs. They apply what
 - Octoplus offers and rewards other than points and Saving Sessions
 - Carbon intensity and other non-Octopus data
 
-The `raw` tools can reach anything in the APIs in the meantime. If you'd like one of these as a proper tool, [open a feature request](https://github.com/mattoddie/octopus-mcp/issues/new?template=feature_request.yml).
+The `raw` tools can reach anything in the APIs in the meantime (enable them with `OCTOPUS_TOOLSETS=all,raw`). If you'd like one of these as a proper tool, [open a feature request](https://github.com/mattoddie/octopus-mcp/issues/new?template=feature_request.yml).
 
 ## Running octopus-mcp
 
 | Component | Requirement |
 |---|---|
 | Docker image | `linux/amd64` or `linux/arm64` (for example Raspberry Pi 4/5) |
-| Go (to build without Docker) | 1.25 or later |
+| Go (to build without Docker) | 1.26 or later |
 | Operating system for the binary | Linux and macOS. Windows should work, but isn't tested. |
 | Network | Outbound HTTPS to `api.octopus.energy` and `api.backend.octopus.energy` |
 | MCP clients | Any client supporting Streamable HTTP or stdio. See [Connecting MCP clients](clients.md). |

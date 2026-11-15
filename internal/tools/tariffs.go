@@ -604,6 +604,7 @@ func registerTariffs(c *Context) {
 		return Obj{"postcode": strings.ToUpper(strings.TrimSpace(a.Postcode)), "region": l, "region_name": octopus.Regions[l], "gsp_group": "_" + l}, nil
 	})
 	registerCarbon(c)
+	registerSchedule(c)
 }
 
 // block is a run of n consecutive values starting at index start, with their average.

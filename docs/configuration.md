@@ -143,7 +143,7 @@ If both `NAME` and `NAME_FILE` are set, the file wins.
 
 ## Keeping the tool list small
 
-Most MCP clients send every tool's name, description and argument schema to the model with each request. With the default toolsets that's about 23 KB for the 17 read-only tools, and 28 KB for 21 tools with writes on (25 KB and 30 KB with `raw` added as well). That uses up context you'd rather spend on your conversation and your energy data, and some clients warn about or cap the number of tools.
+Most MCP clients send every tool's name, description and argument schema to the model with each request. With the default toolsets that's about 25 KB for the 18 read-only tools, and 30 KB for 22 tools with writes on (27 KB and 32 KB with `raw` added as well). That uses up context you'd rather spend on your conversation and your energy data, and some clients warn about or cap the number of tools.
 
 `OCTOPUS_TOOLSETS` is the way to keep the list small. Enable only the toolsets you need: the model sees fewer tools, picks the right one more easily, and can't reach the rest at all.
 
@@ -154,7 +154,7 @@ Clients with their own tool search, such as Claude Code, load tool definitions o
 | Toolset | Use it for |
 |---|---|
 | `account` | The account overview (meters, tariffs), balance, bills and transactions. **Almost always include it**: other tools use it to find your meters and tariff. |
-| `consumption` | Smart meter readings with cost estimates, comparing tariffs on your real usage, and live demand from a Home Mini |
+| `consumption` | Smart meter readings with cost estimates, comparing tariffs on your real usage, solar import and export summaries, and live demand from a Home Mini |
 | `tariffs` | Products, prices, Agile and other half-hourly rates, standing charges, cheapest times, regions. Works without account data. |
 | `intelligent` | Intelligent Octopus cars and chargers: status, charging slots and, with writes, settings |
 | `octoplus` | Octoplus points and Saving Sessions |
@@ -168,20 +168,20 @@ The sizes are the length of the server's `tools/list` response. They change a li
 
 | Goal | `OCTOPUS_TOOLSETS` | Read-only | With writes |
 |---|---|---|---|
-| Everything except raw access (default) | `all` | 17 tools, 23.3 KB | 21 tools, 27.6 KB |
-| Everything, including raw access | `all,raw` | 19 tools, 25.2 KB | 23 tools, 29.6 KB |
-| Usage and bills | `account,consumption,tariffs` | 13 tools, 19.7 KB | 13 tools, 19.7 KB |
+| Everything except raw access (default) | `all` | 18 tools, 25.3 KB | 22 tools, 29.6 KB |
+| Everything, including raw access | `all,raw` | 20 tools, 27.2 KB | 24 tools, 31.6 KB |
+| Usage and bills | `account,consumption,tariffs` | 14 tools, 21.7 KB | 14 tools, 21.7 KB |
 | Agile price watching | `account,tariffs` | 10 tools, 12.7 KB | 10 tools, 12.7 KB |
 | EV charging on Intelligent Octopus Go | `account,tariffs,intelligent` | 12 tools, 14.8 KB | 15 tools, 18.3 KB |
-| Usage, bills and EV charging | `account,consumption,tariffs,intelligent` | 15 tools, 21.7 KB | 18 tools, 25.2 KB |
-| Saving Sessions helper | `account,consumption,tariffs,octoplus` | 15 tools, 21.2 KB | 16 tools, 22.1 KB |
+| Usage, bills and EV charging | `account,consumption,tariffs,intelligent` | 16 tools, 23.7 KB | 19 tools, 27.2 KB |
+| Saving Sessions helper | `account,consumption,tariffs,octoplus` | 16 tools, 23.2 KB | 17 tools, 24.1 KB |
 
 Each toolset on its own:
 
 | Toolset | Read-only | With writes |
 |---|---|---|
 | `account` | 4 tools, 3.7 KB | 4 tools, 3.7 KB |
-| `consumption` | 3 tools, 7.0 KB | 3 tools, 7.0 KB |
+| `consumption` | 4 tools, 9.0 KB | 4 tools, 9.0 KB |
 | `tariffs` | 6 tools, 9.0 KB | 6 tools, 9.0 KB |
 | `intelligent` | 2 tools, 2.1 KB | 5 tools, 5.6 KB |
 | `octoplus` | 2 tools, 1.5 KB | 3 tools, 2.4 KB |

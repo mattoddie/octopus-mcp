@@ -9,6 +9,7 @@ For octopus-mcp, the "public API" is the set of tool names, their arguments, the
 ### Added
 
 - **`octopus_compare_tariffs`** re-prices your actual half-hourly smart meter readings on other tariffs (Agile, Go, Cosy, Tracker, Flux, fixed deals or any product or tariff code) and compares them with the tariffs you were on: unit costs at each half-hour's real rate plus standing charges. Works for electricity import, export (compares earnings) and gas. The `compare_tariffs` prompt uses it.
+- **`octopus_get_solar_summary`** puts the import and export meters side by side for homes with solar panels or a battery: kWh imported and exported, import costs and export earnings at each half-hour's real rate, standing charges and the net cost, by day, week or month. Pass `generated_kwh` from your inverter to add self-consumption and self-sufficiency, which Octopus can't see.
 
 Fixes from a code review.
 

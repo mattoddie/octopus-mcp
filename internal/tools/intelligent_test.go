@@ -27,7 +27,7 @@ func TestDevicesAndDispatches(t *testing.T) {
 	env := newEnv(t)
 	env.mock.OnGraphQL(`query Devices`, octopustest.Data(devicesData()))
 	res := env.obj("octopus_list_devices", nil)
-	devices := list(res["devices"])
+	devices := list(res["items"])
 	ev := devices[0].(Obj)
 	if len(devices) != 2 || ev["make"] != "Example Motors" || num(ev["state_of_charge"]) != 54 || num(ev["battery_kwh"]) != 64 {
 		t.Errorf("devices: %v", devices)

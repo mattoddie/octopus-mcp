@@ -6,6 +6,17 @@ For octopus-mcp, the "public API" is the set of tool names, their arguments, the
 
 ## [Unreleased]
 
+### Breaking changes
+
+Tool, argument and output names now follow the conventions shared by the mattoddie MCP servers, ahead of 1.0.
+
+- **Breaking:** `octopus_rest_get` is renamed `octopus_api_request`, matching the raw API tool of the other servers.
+- **Breaking:** `max_rows` is renamed `limit` on `octopus_get_consumption`, `octopus_get_live_usage`, `octopus_get_unit_rates` and `octopus_get_solar_summary`.
+- **Breaking:** `past_limit` on `octopus_get_saving_sessions` is renamed `limit`.
+- **Breaking:** `completed_hours` on `octopus_get_dispatches` is renamed `hours`, and is now a number, so fractions such as `0.5` work.
+- **Breaking:** `minutes` on `octopus_get_live_usage` is replaced by `hours` (a number; `0.25` is 15 minutes; default 1, at most 24). The output reports `hours` instead of `minutes`.
+- **Breaking:** list tools return `{total, returned, items}`: `octopus_list_bills` and `octopus_list_transactions` return their rows in `items` instead of `bills` and `transactions`, `octopus_list_devices` returns `total`, `returned` and `items` instead of `devices`, and `octopus_list_products` adds `returned`.
+
 ## [0.4.0] - 2026-11-15
 
 Four new tools, and fixes from a code review. octopus-mcp now has 26 tools in 6 toolsets (22 read and 4 write) and 5 prompts.

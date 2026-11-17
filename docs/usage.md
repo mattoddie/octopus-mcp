@@ -157,7 +157,7 @@ Saving Sessions come from a separate Octopus Energy API (`api.backend.octopus.en
 The `raw` toolset is a fallback for things the other tools don't cover:
 
 - `octopus_graphql` runs any query against the Kraken GraphQL API, or the backend API with `endpoint: "backend"`. Mutations need `OCTOPUS_ALLOW_WRITES=true`. Operations that issue or change tokens, API keys or passwords are always refused. The schema can be browsed at [api.octopus.energy/v1/graphql/](https://api.octopus.energy/v1/graphql/).
-- `octopus_rest_get` fetches any REST path, such as `/electricity-meter-points/<MPAN>/`. The REST API is read-only.
+- `octopus_api_request` fetches (GET) any REST path, such as `/electricity-meter-points/<MPAN>/`. The REST API is read-only.
 
 Leave `raw` out of `OCTOPUS_TOOLSETS` if you want the assistant limited to the curated tools.
 

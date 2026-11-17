@@ -11,7 +11,7 @@ import (
 
 type savingSessionsArgs struct {
 	AccountNumber string `json:"account_number,omitempty" jsonschema:"Account number like A-1234ABCD (default OCTOPUS_ACCOUNT, or the only account the API key can see)"`
-	PastLimit     *int   `json:"past_limit,omitempty" jsonschema:"How many past sessions you took part in to include, newest first (default 5)"`
+	Limit         *int   `json:"limit,omitempty" jsonschema:"How many past sessions you took part in to include, newest first (default 5)"`
 }
 
 type joinSessionArgs struct {
@@ -139,7 +139,7 @@ func registerOctoplus(c *Context) {
 			}))
 		}
 		sort.SliceStable(past, func(i, j int) bool { return past[i]["start"].(string) > past[j]["start"].(string) })
-		if limit := limitArg(a.PastLimit, 5, 50); len(past) > limit {
+		if limit := limitArg(a.Limit, 5, 50); len(past) > limit {
 			past = past[:limit]
 		}
 		if upcoming == nil {

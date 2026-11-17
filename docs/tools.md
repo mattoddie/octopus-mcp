@@ -130,7 +130,7 @@ Get smart meter readings for electricity (import or export) or gas, totalled by 
 | `gas_units` | `"kwh"` \| `"m3"` |  | Override the units a gas meter reports in: kwh or m3 (default: as Octopus says for the meter, otherwise m3, which SMETS2 meters use) |
 | `group_by` | `"half_hour"` \| `"hour"` \| `"day"` \| `"week"` \| `"month"` \| `"total"` |  | How to total the half-hourly readings: half_hour, hour, day (default), week (Monday to Sunday), month or total |
 | `include_cost` | boolean |  | Estimate the cost (or export earnings) from the tariff's actual unit rates and standing charges (default true) |
-| `max_rows` | integer |  | Return at most this many rows, the most recent (default 400); use a coarser group_by for long periods |
+| `limit` | integer |  | Return at most this many rows, the most recent (default 400); use a coarser group_by for long periods |
 | `meter_point` | string |  | A specific MPAN (electricity) or MPRN (gas), when the account has several (see octopus_get_account) |
 | `serial` | string |  | A specific meter serial number (default: the meter point's meter that has readings) |
 | `to` | string |  | End: a date (inclusive, the whole day), a date and time, or now/today/yesterday (default the end of yesterday) |
@@ -146,8 +146,8 @@ Get near real-time electricity readings from the smart meter through an Octopus 
 | `account_number` | string |  | Account number like A-1234ABCD (default OCTOPUS_ACCOUNT, or the only account the API key can see) |
 | `device_id` | string |  | Smart meter device ID (default: the electricity import meter's, from octopus_get_account) |
 | `grouping` | `"TEN_SECONDS"` \| `"ONE_MINUTE"` \| `"FIVE_MINUTES"` \| `"HALF_HOURLY"` \| `"HOURLY"` |  | Reading interval: TEN_SECONDS, ONE_MINUTE, FIVE_MINUTES, HALF_HOURLY or HOURLY (default ONE_MINUTE up to an hour, FIVE_MINUTES beyond) |
-| `max_rows` | integer |  | Return at most this many readings, the most recent (default 60) |
-| `minutes` | integer |  | How far back to look, in minutes (default 60, at most 1440) |
+| `hours` | number |  | How far back to look, in hours; fractions allowed, for example 0.25 for 15 minutes (default 1, at most 24) |
+| `limit` | integer |  | Return at most this many readings, the most recent (default 60) |
 
 ### octopus_get_solar_summary
 
@@ -163,7 +163,7 @@ Combine a home's electricity import and export smart meters (for solar panels or
 | `generated_kwh` | number |  | What the panels generated in the whole period, in kWh, from your inverter or generation meter. Octopus doesn't have this, so self-consumption is only worked out when you give it |
 | `group_by` | `"day"` \| `"week"` \| `"month"` \| `"total"` |  | How to total the half-hours: day (default), week (Monday to Sunday), month or total |
 | `import_meter_point` | string |  | The import MPAN, when the account has several (see octopus_get_account) |
-| `max_rows` | integer |  | Return at most this many rows, the most recent (default 100) |
+| `limit` | integer |  | Return at most this many rows, the most recent (default 100) |
 | `to` | string |  | End: a date (inclusive, the whole day) or date and time (default the end of yesterday) |
 
 ## tariffs
@@ -277,7 +277,7 @@ Get a tariff's unit rates (pence per kWh, including VAT) over a period: every ha
 | `direction` | `"import"` \| `"export"` |  | With the account's tariff: import (default) or export |
 | `from` | string |  | Start: a date (YYYY-MM-DD, UK time), a date and time, or now/today/tomorrow (default the start of today) |
 | `fuel` | `"electricity"` \| `"gas"` |  | electricity (default) or gas |
-| `max_rows` | integer |  | Return at most this many rates (default 200) |
+| `limit` | integer |  | Return at most this many rates (default 200) |
 | `postcode` | string |  | With product_code, instead of region: a UK postcode, used to look up the region |
 | `product_code` | string |  | Instead of tariff_code: a product code like AGILE-24-10-01 (see octopus_list_products), with region or postcode |
 | `region` | string |  | With product_code: the region letter A to P (see octopus_find_region) |
@@ -352,8 +352,8 @@ Get Intelligent Octopus charging slots (dispatches) for a car or charger: the pl
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `account_number` | string |  | Account number like A-1234ABCD (default OCTOPUS_ACCOUNT, or the only account the API key can see) |
-| `completed_hours` | integer |  | How many hours of completed dispatches to include (default 24, at most 168). Octopus reports them about 12 hours late |
 | `device_id` | string |  | The device's ID from octopus_list_devices (default: the account's only car or charger) |
+| `hours` | number |  | How many hours back to include completed dispatches from; fractions allowed (default 24, at most 168). Octopus reports them about 12 hours late |
 
 ### octopus_list_devices
 
@@ -411,7 +411,7 @@ Get whether the account is enrolled in Octoplus, Octopus's rewards scheme, and i
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `account_number` | string |  | Account number like A-1234ABCD (default OCTOPUS_ACCOUNT, or the only account the API key can see) |
-| `past_limit` | integer |  | How many past sessions you took part in to include, newest first (default 5) |
+| `limit` | integer |  | How many past sessions you took part in to include, newest first (default 5) |
 
 ### octopus_get_saving_sessions
 
@@ -422,7 +422,7 @@ Get Octoplus Saving Sessions (and turn-up and weekend happy hour sessions): upco
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `account_number` | string |  | Account number like A-1234ABCD (default OCTOPUS_ACCOUNT, or the only account the API key can see) |
-| `past_limit` | integer |  | How many past sessions you took part in to include, newest first (default 5) |
+| `limit` | integer |  | How many past sessions you took part in to include, newest first (default 5) |
 
 ### octopus_join_saving_session
 
@@ -441,8 +441,19 @@ Raw API escape hatches for anything the other tools don't cover: GraphQL queries
 
 | Tool | Access | Summary |
 |---|---|---|
+| [`octopus_api_request`](#octopus_api_request) | 🟢 read | Raw REST request |
 | [`octopus_graphql`](#octopus_graphql) | 🟢 read | Raw GraphQL query |
-| [`octopus_rest_get`](#octopus_rest_get) | 🟢 read | Raw REST request |
+
+### octopus_api_request
+
+🟢 read
+
+GET any path of the Octopus REST API (https://api.octopus.energy/v1), for anything the other tools don't cover, such as /electricity-meter-points/<MPAN>/ or a consumption path with your own parameters. The REST API is read-only; the API key is sent with HTTP Basic auth.
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `path` | string | yes | Path relative to https://api.octopus.energy/v1, for example /products/ or /accounts/A-1234ABCD/ |
+| `query` | object |  | Query string parameters, for example {"period_from": "2026-10-01T00:00Z"} |
 
 ### octopus_graphql
 
@@ -455,17 +466,6 @@ Run any query against Octopus's Kraken GraphQL API (or its backend API), for any
 | `query` | string | yes | A GraphQL query (or, with writes enabled, a mutation). Use variables rather than pasting values into the query |
 | `endpoint` | `"kraken"` \| `"backend"` |  | kraken (default, the main Kraken API) or backend (Octopus Energy's own API, which has Saving Sessions and Octoplus extras) |
 | `variables` | object |  | Values for the query's variables |
-
-### octopus_rest_get
-
-🟢 read
-
-GET any path of the Octopus REST API (https://api.octopus.energy/v1), for anything the other tools don't cover, such as /electricity-meter-points/<MPAN>/ or a consumption path with your own parameters. The REST API is read-only; the API key is sent with HTTP Basic auth.
-
-| Argument | Type | Required | Description |
-|---|---|---|---|
-| `path` | string | yes | Path relative to https://api.octopus.energy/v1, for example /products/ or /accounts/A-1234ABCD/ |
-| `query` | object |  | Query string parameters, for example {"period_from": "2026-10-01T00:00Z"} |
 
 ## Prompts
 

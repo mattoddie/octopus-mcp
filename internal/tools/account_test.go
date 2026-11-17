@@ -85,7 +85,7 @@ func TestBalanceBillsAndTransactions(t *testing.T) {
 		"attachments": Obj{"edges": []any{Obj{"node": Obj{"filename": "bill.pdf", "temporaryUrl": "https://example.com/bill.pdf", "temporaryUrlExpiresAt": "2026-10-15T13:00:00Z"}}}},
 	}}}}}}))
 	bills := env.obj("octopus_list_bills", map[string]any{"from": "2026-01-01", "limit": 3, "include_pdf_links": true})
-	b := list(bills["bills"])[0].(Obj)
+	b := list(bills["items"])[0].(Obj)
 	if num(b["charges_gbp"]) != 94.5 || num(b["closing_balance_gbp"]) != 22.1 || get(b, "pdf", "url") != "https://example.com/bill.pdf" {
 		t.Errorf("bill: %v", b)
 	}
@@ -99,7 +99,7 @@ func TestBalanceBillsAndTransactions(t *testing.T) {
 		Obj{"node": Obj{"__typename": "Charge", "id": "c1", "postedDate": "2026-09-30", "title": "Electricity", "amounts": Obj{"net": 6000, "tax": 300, "gross": 6300}, "balanceCarriedForward": -5790}},
 	}}}}))
 	tx := env.obj("octopus_list_transactions", map[string]any{"limit": 500})
-	items := list(tx["transactions"])
+	items := list(tx["items"])
 	if len(items) != 2 || items[0].(Obj)["type"] != "payment" || num(items[0].(Obj)["amount_gbp"]) != 80 || num(items[1].(Obj)["amount_gbp"]) != 63 {
 		t.Errorf("transactions: %v", items)
 	}

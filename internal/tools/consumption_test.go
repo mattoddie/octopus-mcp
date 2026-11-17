@@ -68,9 +68,9 @@ func TestConsumptionWithAgileCost(t *testing.T) {
 	if rows := list(hourly["rows"]); len(rows) != 24 || num(rows[0].(Obj)["kWh"]) != 1 || rows[0].(Obj)["start"] != "2026-10-13T00:00:00+01:00" || rows[0].(Obj)["cost_gbp"] != nil {
 		t.Errorf("hourly: %v", hourly["rows"])
 	}
-	capped := env.obj("octopus_get_consumption", map[string]any{"from": "2026-10-13", "to": "2026-10-13", "group_by": "half_hour", "max_rows": 10})
+	capped := env.obj("octopus_get_consumption", map[string]any{"from": "2026-10-13", "to": "2026-10-13", "group_by": "half_hour", "limit": 10})
 	if len(list(capped["rows"])) != 10 || capped["truncated"] != true {
-		t.Errorf("max_rows: %v", capped)
+		t.Errorf("limit: %v", capped)
 	}
 }
 
@@ -149,8 +149,14 @@ func TestLiveUsage(t *testing.T) {
 	if vars["grouping"] != "ONE_MINUTE" || vars["start"] != "2026-10-15T11:00:00Z" || vars["device"] != "00-11-22-33-44-55-66-77" {
 		t.Errorf("telemetry variables: %v", vars)
 	}
+	if res := env.obj("octopus_get_live_usage", map[string]any{"hours": 0.25}); num(res["hours"]) != 0.25 {
+		t.Errorf("fractional hours: %v", res)
+	}
+	if vars := env.mock.LastGraphQL("smartMeterTelemetry").Variables; vars["start"] != "2026-10-15T11:45:00Z" {
+		t.Errorf("fractional hours start: %v", vars)
+	}
 	env.mock.OnGraphQL(`smartMeterTelemetry`, octopustest.Data(Obj{"smartMeterTelemetry": []any{}}))
-	if res := env.obj("octopus_get_live_usage", map[string]any{"device_id": "x", "minutes": 120}); !strings.Contains(fmt.Sprint(res["note"]), "Home Mini") || res["grouping"] != "FIVE_MINUTES" {
+	if res := env.obj("octopus_get_live_usage", map[string]any{"device_id": "x", "hours": 2}); !strings.Contains(fmt.Sprint(res["note"]), "Home Mini") || res["grouping"] != "FIVE_MINUTES" {
 		t.Errorf("no live data: %v", res)
 	}
 }

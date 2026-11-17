@@ -6,6 +6,10 @@ For octopus-mcp, the "public API" is the set of tool names, their arguments, the
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-17
+
+This release renames tools, arguments and list output to match the other mattoddie MCP servers ahead of 1.0. octopus-mcp has 26 tools (22 read and 4 write) and 5 prompts. Read the **Breaking** entries before upgrading.
+
 ### Breaking changes
 
 Tool, argument and output names now follow the conventions shared by the mattoddie MCP servers, ahead of 1.0.
@@ -149,7 +153,8 @@ First release, not yet tagged. It hasn't yet been tested against a live Octopus 
 - Multi-arch distroless Docker image (`linux/amd64`, `linux/arm64`) published to GHCR on each release, with SBOM and provenance attestation.
 - Documentation, including a tool reference generated from the code, and a website.
 
-[Unreleased]: https://github.com/mattoddie/octopus-mcp/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/mattoddie/octopus-mcp/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/mattoddie/octopus-mcp/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/mattoddie/octopus-mcp/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/mattoddie/octopus-mcp/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/mattoddie/octopus-mcp/compare/v0.3.0...v0.3.1

@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/mattoddie/octopus-mcp/internal/octopus"
 )
@@ -19,7 +18,7 @@ type deviceArgs struct {
 
 type dispatchArgs struct {
 	deviceArgs
-	CompletedHours *int `json:"completed_hours,omitempty" jsonschema:"How many hours of completed dispatches to include (default 24, at most 168). Octopus reports them about 12 hours late"`
+	Hours *float64 `json:"hours,omitempty" jsonschema:"How many hours back to include completed dispatches from; fractions allowed (default 24, at most 168). Octopus reports them about 12 hours late"`
 }
 
 type preferencesArgs struct {
@@ -165,7 +164,7 @@ func registerIntelligent(c *Context) {
 				items = append(items, summarizeDevice(d))
 			}
 		}
-		out := Obj{"account_number": number, "devices": items}
+		out := Obj{"account_number": number, "total": len(items), "returned": len(items), "items": items}
 		if len(items) == 0 {
 			out["note"] = "No smart devices are registered. They appear once a car or charger is connected to Intelligent Octopus in the Octopus app."
 		}
@@ -212,8 +211,7 @@ func registerIntelligent(c *Context) {
 			}
 			planned = append(planned, row)
 		}
-		hours := limitArg(a.CompletedHours, 24, 168)
-		since := now.Add(-time.Duration(hours) * time.Hour)
+		since := now.Add(-hoursArg(a.Hours, 24, 168))
 		var completed []Obj
 		for _, d := range octopus.List(res, "completedDispatches") {
 			s, _ := octopus.ParseTime(octopus.Str(d, "start"))

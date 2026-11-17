@@ -125,7 +125,7 @@ func registerRaw(c *Context) {
 	})
 
 	add(c, Def{
-		Toolset: "raw", Name: "octopus_rest_get", Title: "Raw REST request",
+		Toolset: "raw", Name: "octopus_api_request", Title: "Raw REST request",
 		Description: "GET any path of the Octopus REST API (https://api.octopus.energy/v1), for anything the other tools don't cover, such as /electricity-meter-points/<MPAN>/ or a consumption path with your own parameters. The REST API is read-only; the API key is sent with HTTP Basic auth.",
 	}, func(ctx context.Context, a restArgs) (any, error) {
 		p, err := url.PathUnescape(a.Path)

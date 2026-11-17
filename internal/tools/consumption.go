@@ -19,17 +19,17 @@ type consumptionArgs struct {
 	To             string   `json:"to,omitempty" jsonschema:"End: a date (inclusive, the whole day), a date and time, or now/today/yesterday (default the end of yesterday)"`
 	GroupBy        string   `json:"group_by,omitempty" jsonschema:"How to total the half-hourly readings: half_hour, hour, day (default), week (Monday to Sunday), month or total"`
 	IncludeCost    *bool    `json:"include_cost,omitempty" jsonschema:"Estimate the cost (or export earnings) from the tariff's actual unit rates and standing charges (default true)"`
-	MaxRows        *int     `json:"max_rows,omitempty" jsonschema:"Return at most this many rows, the most recent (default 400); use a coarser group_by for long periods"`
+	Limit          *int     `json:"limit,omitempty" jsonschema:"Return at most this many rows, the most recent (default 400); use a coarser group_by for long periods"`
 	GasUnits       string   `json:"gas_units,omitempty" jsonschema:"Override the units a gas meter reports in: kwh or m3 (default: as Octopus says for the meter, otherwise m3, which SMETS2 meters use)"`
 	CalorificValue *float64 `json:"calorific_value,omitempty" jsonschema:"Gas calorific value in MJ/m³ for converting m³ to kWh (default 39.5; your bill shows the actual value)"`
 }
 
 type liveArgs struct {
-	AccountNumber string `json:"account_number,omitempty" jsonschema:"Account number like A-1234ABCD (default OCTOPUS_ACCOUNT, or the only account the API key can see)"`
-	DeviceID      string `json:"device_id,omitempty" jsonschema:"Smart meter device ID (default: the electricity import meter's, from octopus_get_account)"`
-	Minutes       *int   `json:"minutes,omitempty" jsonschema:"How far back to look, in minutes (default 60, at most 1440)"`
-	Grouping      string `json:"grouping,omitempty" jsonschema:"Reading interval: TEN_SECONDS, ONE_MINUTE, FIVE_MINUTES, HALF_HOURLY or HOURLY (default ONE_MINUTE up to an hour, FIVE_MINUTES beyond)"`
-	MaxRows       *int   `json:"max_rows,omitempty" jsonschema:"Return at most this many readings, the most recent (default 60)"`
+	AccountNumber string   `json:"account_number,omitempty" jsonschema:"Account number like A-1234ABCD (default OCTOPUS_ACCOUNT, or the only account the API key can see)"`
+	DeviceID      string   `json:"device_id,omitempty" jsonschema:"Smart meter device ID (default: the electricity import meter's, from octopus_get_account)"`
+	Hours         *float64 `json:"hours,omitempty" jsonschema:"How far back to look, in hours; fractions allowed, for example 0.25 for 15 minutes (default 1, at most 24)"`
+	Grouping      string   `json:"grouping,omitempty" jsonschema:"Reading interval: TEN_SECONDS, ONE_MINUTE, FIVE_MINUTES, HALF_HOURLY or HOURLY (default ONE_MINUTE up to an hour, FIVE_MINUTES beyond)"`
+	Limit         *int     `json:"limit,omitempty" jsonschema:"Return at most this many readings, the most recent (default 60)"`
 }
 
 const (
@@ -344,7 +344,7 @@ func registerConsumption(c *Context) {
 		if groupBy == "total" {
 			rows = nil
 		}
-		maxRows := limitArg(a.MaxRows, 400, 5000)
+		maxRows := limitArg(a.Limit, 400, 5000)
 		truncated := false
 		if len(rows) > maxRows {
 			rows = rows[len(rows)-maxRows:]
@@ -443,11 +443,11 @@ func registerConsumption(c *Context) {
 				return nil, err
 			}
 		}
-		minutes := limitArg(a.Minutes, 60, 1440)
+		window := hoursArg(a.Hours, 1, 24)
 		grouping := strings.ToUpper(a.Grouping)
 		if grouping == "" {
 			grouping = "ONE_MINUTE"
-			if minutes > 60 {
+			if window > time.Hour {
 				grouping = "FIVE_MINUTES"
 			}
 		}
@@ -461,13 +461,13 @@ func registerConsumption(c *Context) {
     consumption
     export
   }
-}`, Obj{"device": device, "start": octopus.FormatTime(now.Add(-time.Duration(minutes) * time.Minute)), "end": octopus.FormatTime(now), "grouping": grouping}, &res)
+}`, Obj{"device": device, "start": octopus.FormatTime(now.Add(-window)), "end": octopus.FormatTime(now), "grouping": grouping}, &res)
 		if err != nil {
 			return nil, err
 		}
 		list := octopus.List(res, "smartMeterTelemetry")
 		sort.SliceStable(list, func(i, j int) bool { return octopus.Str(list[i], "readAt") < octopus.Str(list[j], "readAt") })
-		out := Obj{"device_id": device, "grouping": grouping, "minutes": minutes}
+		out := Obj{"device_id": device, "grouping": grouping, "hours": window.Hours()}
 		if len(list) == 0 {
 			out["note"] = "No live readings. Live data needs an Octopus Home Mini paired with this smart meter, and it must be online."
 			return out, nil
@@ -500,7 +500,7 @@ func registerConsumption(c *Context) {
 			out["max_demand_w"] = octopus.Round(maxW, 0)
 		}
 		out["kwh_in_window"] = octopus.Round(kwh, 3)
-		maxRows := limitArg(a.MaxRows, 60, 1000)
+		maxRows := limitArg(a.Limit, 60, 1000)
 		if len(readings) > maxRows {
 			readings = readings[len(readings)-maxRows:]
 			out["note"] = fmt.Sprintf("Showing the last %d readings.", maxRows)

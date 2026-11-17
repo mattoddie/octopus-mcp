@@ -21,7 +21,7 @@ type solarArgs struct {
 	ImportMeterPoint string   `json:"import_meter_point,omitempty" jsonschema:"The import MPAN, when the account has several (see octopus_get_account)"`
 	ExportMeterPoint string   `json:"export_meter_point,omitempty" jsonschema:"The export MPAN, when the account has several (see octopus_get_account)"`
 	GeneratedKWh     *float64 `json:"generated_kwh,omitempty" jsonschema:"What the panels generated in the whole period, in kWh, from your inverter or generation meter. Octopus doesn't have this, so self-consumption is only worked out when you give it"`
-	MaxRows          *int     `json:"max_rows,omitempty" jsonschema:"Return at most this many rows, the most recent (default 100)"`
+	Limit            *int     `json:"limit,omitempty" jsonschema:"Return at most this many rows, the most recent (default 100)"`
 }
 
 func registerSolar(c *Context) {
@@ -148,7 +148,7 @@ func registerSolar(c *Context) {
 				})
 			}
 		}
-		maxRows := limitArg(a.MaxRows, 100, 2000)
+		maxRows := limitArg(a.Limit, 100, 2000)
 		truncated := false
 		if len(rows) > maxRows {
 			rows = rows[len(rows)-maxRows:]

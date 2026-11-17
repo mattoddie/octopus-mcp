@@ -250,7 +250,7 @@ func registerAccount(c *Context) {
 		if bills == nil {
 			bills = []Obj{}
 		}
-		return Obj{"account_number": number, "total": octopus.Get(res, "account", "bills", "totalCount"), "returned": len(bills), "bills": bills,
+		return Obj{"account_number": number, "total": octopus.Get(res, "account", "bills", "totalCount"), "returned": len(bills), "items": bills,
 			"note": "Balances are as Octopus shows them: positive means in credit."}, nil
 	})
 
@@ -288,7 +288,7 @@ func registerAccount(c *Context) {
 		if items == nil {
 			items = []Obj{}
 		}
-		return Obj{"account_number": number, "total": octopus.Get(res, "account", "transactions", "totalCount"), "returned": len(items), "transactions": items}, nil
+		return Obj{"account_number": number, "total": octopus.Get(res, "account", "transactions", "totalCount"), "returned": len(items), "items": items}, nil
 	})
 }
 
@@ -306,6 +306,16 @@ func limitArg(limit *int, def, maxN int) int {
 		return def
 	}
 	return min(*limit, maxN)
+}
+
+// hoursArg turns an optional look-back in hours (fractions allowed) into a
+// duration, using def when it is missing or not positive and capping it at maxH.
+func hoursArg(hours *float64, def, maxH float64) time.Duration {
+	h := def
+	if hours != nil && *hours > 0 {
+		h = min(*hours, maxH)
+	}
+	return time.Duration(h * float64(time.Hour))
 }
 
 // dateVars adds GraphQL Date variables from date arguments.

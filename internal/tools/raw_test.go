@@ -118,12 +118,12 @@ func TestRawGraphQLGateBypasses(t *testing.T) {
 func TestRawREST(t *testing.T) {
 	env := newEnv(t)
 	env.mock.On("GET", "/electricity-meter-points/1000000000001/", octopustest.JSON(Obj{"gsp": "_C", "mpan": "1000000000001", "profile_class": 1}))
-	res := env.obj("octopus_rest_get", map[string]any{"path": "/v1/electricity-meter-points/1000000000001"})
+	res := env.obj("octopus_api_request", map[string]any{"path": "/v1/electricity-meter-points/1000000000001"})
 	if res["gsp"] != "_C" || env.mock.Last("/electricity-meter-points/").BasicUser != octopustest.APIKey {
 		t.Errorf("rest: %v", res)
 	}
 	for _, p := range []string{"accounts/x", "/../x", "/products/?x=1", "/graphql/"} {
-		if msg := env.callErr("octopus_rest_get", map[string]any{"path": p}); !strings.Contains(msg, "path must") {
+		if msg := env.callErr("octopus_api_request", map[string]any{"path": p}); !strings.Contains(msg, "path must") {
 			t.Errorf("%s: %s", p, msg)
 		}
 	}
@@ -134,7 +134,7 @@ func TestRawREST(t *testing.T) {
 func TestRawRESTRefusesGraphQLBehindV1(t *testing.T) {
 	env := newEnv(t)
 	for _, p := range []string{"/v1/v1/graphql", "/v1/v1/graphql/", "/v1/graphql", "/V1/GraphQL/", "/v1/%2Fv1/graphql", "/products/graphql/"} {
-		if msg := env.callErr("octopus_rest_get", map[string]any{"path": p}); !strings.Contains(msg, "path must") {
+		if msg := env.callErr("octopus_api_request", map[string]any{"path": p}); !strings.Contains(msg, "path must") {
 			t.Errorf("%s: %s", p, msg)
 		}
 	}
@@ -144,7 +144,7 @@ func TestRawRESTRefusesGraphQLBehindV1(t *testing.T) {
 	// /v1 is removed once only, so the path requested is the path checked.
 	env.mock.On("GET", "/v1/products/", octopustest.JSON(Obj{"doubled": true}))
 	env.mock.On("GET", "/products/", octopustest.JSON(Obj{"doubled": false}))
-	if res := env.obj("octopus_rest_get", map[string]any{"path": "/v1/v1/products/"}); res["doubled"] != true {
+	if res := env.obj("octopus_api_request", map[string]any{"path": "/v1/v1/products/"}); res["doubled"] != true {
 		t.Errorf("/v1/v1/products/ was normalised twice: %v", res)
 	}
 }
@@ -153,7 +153,7 @@ func TestRawRESTRefusesGraphQLBehindV1(t *testing.T) {
 func TestRawRESTRedactsSecretsInData(t *testing.T) {
 	env := newEnv(t)
 	env.mock.On("GET", "/products/", octopustest.JSON(Obj{"echo": "key " + octopustest.APIKey + " here"}))
-	res := env.raw("octopus_rest_get", map[string]any{"path": "/products/"})
+	res := env.raw("octopus_api_request", map[string]any{"path": "/products/"})
 	if out := text(res); strings.Contains(out, octopustest.APIKey) || !strings.Contains(out, "[redacted]") {
 		t.Errorf("API key in output: %s", out)
 	}
@@ -169,7 +169,7 @@ func TestRawRESTRedactsSecretsInData(t *testing.T) {
 func TestRawRESTRejectsDoubleEncoding(t *testing.T) {
 	env := newEnv(t)
 	for _, p := range []string{"/%252e%252e/graphql/", "/products/%2525", "/%2e%2e/graphql/", "/GraphQL/", "/products/.", "/products/%0aX"} {
-		msg := env.callErr("octopus_rest_get", map[string]any{"path": p})
+		msg := env.callErr("octopus_api_request", map[string]any{"path": p})
 		if !strings.Contains(msg, "path must") {
 			t.Errorf("%s: %s", p, msg)
 		}

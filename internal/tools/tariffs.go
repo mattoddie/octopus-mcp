@@ -44,9 +44,9 @@ type productArgs struct {
 
 type ratesArgs struct {
 	TariffArgs
-	From    string `json:"from,omitempty" jsonschema:"Start: a date (YYYY-MM-DD, UK time), a date and time, or now/today/tomorrow (default the start of today)"`
-	To      string `json:"to,omitempty" jsonschema:"End: a date (inclusive, the whole day), a date and time, or today/tomorrow (default the end of tomorrow; Agile prices for tomorrow are usually published around 4pm)"`
-	MaxRows *int   `json:"max_rows,omitempty" jsonschema:"Return at most this many rates (default 200)"`
+	From  string `json:"from,omitempty" jsonschema:"Start: a date (YYYY-MM-DD, UK time), a date and time, or now/today/tomorrow (default the start of today)"`
+	To    string `json:"to,omitempty" jsonschema:"End: a date (inclusive, the whole day), a date and time, or today/tomorrow (default the end of tomorrow; Agile prices for tomorrow are usually published around 4pm)"`
+	Limit *int   `json:"limit,omitempty" jsonschema:"Return at most this many rates (default 200)"`
 }
 
 type standingArgs struct {
@@ -346,7 +346,7 @@ func registerTariffs(c *Context) {
 			items = append(items, s)
 		}
 		octopus.SortBy(items, "code")
-		return Obj{"total": len(items), "items": items}, nil
+		return Obj{"total": len(items), "returned": len(items), "items": items}, nil
 	})
 
 	add(c, Def{
@@ -414,7 +414,7 @@ func registerTariffs(c *Context) {
 			return nil, err
 		}
 		out := Obj{"tariff": tariffInfo(t, source), "from": octopus.LocalTime(from), "to": octopus.LocalTime(to)}
-		maxRows := limitArg(a.MaxRows, 200, 2000)
+		maxRows := limitArg(a.Limit, 200, 2000)
 		list := func(kind string) (Obj, error) {
 			rs, err := cl.TariffRates(ctx, t, kind, from, to)
 			if err != nil {
